@@ -205,7 +205,8 @@ def on_message(resp, bot, token):
                         # Update cooldown timestamp to block future catches for 120 seconds
                         LAST_CATCH_TIME = time.time()
                     else:
-                        print(f"[{PROJECT_NAME}] Could not identify Pokemon from image.")
+                        print(f"[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.")
+                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
 
         # Immediate button click catching
         if author_id == POKETWO_ID and msg.get("components"):

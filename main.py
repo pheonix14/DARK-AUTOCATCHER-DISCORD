@@ -40,6 +40,32 @@ def start_instance(token):
     except Exception as e:
         web_server.add_log(f"NODE CRASHED ({token[:10]}): {e}")
 
+def watch_files():
+    files_mtime = {}
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    def get_mtimes():
+        mtimes = {}
+        for root, _, files in os.walk(base_dir):
+            if "node_modules" in root or "__pycache__" in root or ".git" in root or ".venv" in root:
+                continue
+            for file in files:
+                if file.endswith('.py'):
+                    path = os.path.join(root, file)
+                    mtimes[path] = os.path.getmtime(path)
+        return mtimes
+
+    files_mtime = get_mtimes()
+    
+    while True:
+        time.sleep(2)
+        current_mtimes = get_mtimes()
+        for path, mtime in current_mtimes.items():
+            if path in files_mtime and mtime > files_mtime[path]:
+                print(f"\n[{PROJECT_NAME}] HOT-RELOAD: File change detected in {os.path.basename(path)}. Restarting...")
+                os.execv(sys.executable, ['python'] + sys.argv)
+        files_mtime = current_mtimes
+
 def main():
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -56,6 +82,9 @@ def main():
     ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
     """)
     print(f"[{PROJECT_NAME}] SYSTEM OVERRIDE INITIATED... developed by pheonix14")
+    
+    # 0. Start hot-reload watcher thread
+    threading.Thread(target=watch_files, daemon=True).start()
     
     # 1. Start Dashboard (HTTP + WebSocket + auto-open browser)
     web_server.start_server(http_port=8085, ws_port=8086, open_browser=True)
