@@ -75,7 +75,7 @@ def query_huggingface(image_bytes, hf_token, model_id):
     return None
 
 def classify_pokemon(image_url, hf_token, primary_model):
-    """Downloads spawn image and classifies it using Hugging Face."""
+    """Downloads spawn image and classifies it using Hugging Face, validating against pokemon.txt."""
     try:
         response = requests.get(image_url, timeout=10)
         if response.status_code != 200:
@@ -83,8 +83,14 @@ def classify_pokemon(image_url, hf_token, primary_model):
         
         img_bytes = response.content
         
+        with open("pokemon.txt", "r", encoding="utf-8") as f:
+            valid_pokemon = {p.lower().strip() for p in f.read().splitlines()}
+            
         # Build model fallback list with the best Pokemon classifiers
-        models_to_try = [primary_model]
+        models_to_try = []
+        if primary_model:
+            models_to_try.append(primary_model)
+            
         backup_models = [
             "imjeffharris/pokemon_classifier",
             "aaraki/vit-base-patch16-224-in21k-finetuned-pokemon",
@@ -99,16 +105,20 @@ def classify_pokemon(image_url, hf_token, primary_model):
             print(f"\033[96m[{PROJECT_NAME}] Attempting classification with model: {model_id}...\033[0m")
             res = query_huggingface(img_bytes, hf_token, model_id)
             
-            if res is None:
+            if res is None or not isinstance(res, list):
                 continue  # Model failed, try the next one in the fallback list
                 
-            if isinstance(res, list) and len(res) > 0:
-                top_prediction = res[0]
+            # Check top 3 predictions from this model
+            for top_prediction in res[:3]:
                 pred_name = top_prediction.get("label", "").lower().strip()
                 # Clean up potential prefix formatting from classifiers (e.g. "pikachu" instead of "n012345_pikachu")
                 if "_" in pred_name:
                     pred_name = pred_name.split("_")[-1]
-                return pred_name
+                    
+                if pred_name in valid_pokemon:
+                    print(f"\033[92m[{PROJECT_NAME}] Valid classification found: {pred_name} (Confidence: {top_prediction.get('score', 0):.2f})\033[0m")
+                    return pred_name
+                    
     except Exception as e:
         print(f"[{PROJECT_NAME}] Image classification exception: {e}")
     return None
