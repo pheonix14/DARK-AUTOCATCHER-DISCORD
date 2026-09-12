@@ -133,20 +133,29 @@ function connectWebSocket() {
 
     socket.onmessage = (event) => {
         const frame = JSON.parse(event.data);
+        const msg = frame;
         if (frame.type === 'config') {
             localConfig = frame.data;
             renderConfigToInputs();
         } else if (frame.type === 'log') {
             appendSystemLog(frame.data);
-        } else if (frame.type === 'structured_log') {
-            handleNewCaptureLog(frame.data);
-        } else if (frame.type === 'structured_logs') {
-            if (frame.data && frame.data.length > 0) {
-                structuredCatches = frame.data;
-                localStorage.setItem('structuredCatches', JSON.stringify(structuredCatches));
+        } else if (msg.type === 'structured_logs') {
+            structuredCatches = msg.data || [];
+            localStorage.setItem('structuredCatches', JSON.stringify(structuredCatches));
+            if (document.getElementById('catchesGallery')) {
                 renderCatchesGallery();
-                updateAcquisitionsMetrics();
             }
+            updateAcquisitionsMetrics();
+        } else if (msg.type === 'history_cleared') {
+            structuredCatches = [];
+            localStorage.setItem('structuredCatches', JSON.stringify(structuredCatches));
+            if (document.getElementById('catchesGallery')) {
+                renderCatchesGallery();
+            }
+            updateAcquisitionsMetrics();
+            showToast('History Cleared', 'The catch history database has been wiped.');
+        } else if (msg.type === 'structured_log') {
+            handleNewCaptureLog(frame.data);
         } else if (frame.type === 'engine_state') {
             handleEngineState(frame.data, frame.image_url);
         }
@@ -329,10 +338,14 @@ function renderCatchesGallery() {
         const card = document.createElement('div');
         card.className = 'history-card';
         let rarityColor = c.rarity.toLowerCase() === 'common' ? 'rgba(255,255,255,0.4)' : 'var(--c1)';
+        
+        let cleanName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        let pokeImg = c.name ? `https://img.pokemondb.net/sprites/home/normal/${cleanName}.png` : c.image_url;
+
         card.innerHTML = `
             <div class="date-badge">${c.time.split(' ')[0]}</div>
             <div class="rarity-badge" style="color: ${rarityColor}; border: 1px solid ${rarityColor};">${c.rarity || 'COM'}</div>
-            <div class="card-img-wrap"><img src="${c.image_url || '/logo.png'}" alt="${c.name}" onerror="this.src='/logo.png'"></div>
+            <div class="card-img-wrap"><img src="${pokeImg}" alt="${c.name}" onerror="this.src='${c.image_url || '/logo.png'}'"></div>
             <h3>${c.name}</h3>
             <p>Level ${c.details || '?'}</p>
         `;
@@ -361,6 +374,22 @@ function updateAcquisitionsMetrics() {
     if (sEl) sEl.textContent = successes;
     if (fEl) fEl.textContent = fails;
     if (rEl) rEl.textContent = ratio + '%';
+}
+
+function testAddStructuredLog() {
+    const ws = socket;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        // Just for local testing if needed
+    }
+}
+
+function clearHistory() {
+    if (confirm("Are you sure you want to clear the entire catch history?")) {
+        const ws = socket;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'clear_history' }));
+        }
+    }
 }
 
 function pushConfig() {

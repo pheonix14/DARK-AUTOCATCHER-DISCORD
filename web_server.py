@@ -15,7 +15,23 @@ INDEX_FILE = os.path.join(BASE_DIR, "pages", "index.html")
 
 WS_CLIENTS = set()
 LOGS = []
-STRUCTURED_LOGS = []
+HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except: pass
+    return []
+
+def save_history():
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(STRUCTURED_LOGS, f)
+    except: pass
+
+STRUCTURED_LOGS = load_history()
 
 _loop = None
 
@@ -48,11 +64,18 @@ def add_log_structured(name, rarity, image_url="", details="", bot_source="POKET
         "bot_source": bot_source,
         "status": status
     }
-    STRUCTURED_LOGS.append(log_entry)
-    if len(STRUCTURED_LOGS) > 200:
-        STRUCTURED_LOGS.pop(0)
+    STRUCTURED_LOGS.insert(0, log_entry) # Put new ones at the top
+    if len(STRUCTURED_LOGS) > 1000:
+        STRUCTURED_LOGS.pop()
         
+    save_history()
     _broadcast(json.dumps({"type": "structured_log", "data": log_entry}))
+
+def clear_history():
+    global STRUCTURED_LOGS
+    STRUCTURED_LOGS = []
+    save_history()
+    _broadcast(json.dumps({"type": "history_cleared"}))
 
 def broadcast_engine_state(state, image_url=""):
     """Broadcast engine state to UI (detected, catch_sent, caught)"""
@@ -119,6 +142,9 @@ async def _ws_handler(websocket):
                     custom_id = msg.get("custom_id", "")
                     result = click_button(channel_id, message_id, button_label, custom_id)
                     await websocket.send(json.dumps({"type": "action_result", "data": result}))
+
+                elif msg_type == "clear_history":
+                    clear_history()
 
             except Exception as e:
                 add_log(f"WS message error: {e}")
