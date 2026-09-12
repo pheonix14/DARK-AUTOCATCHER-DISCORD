@@ -20,6 +20,8 @@ LAST_SUCCESSFUL_CATCH_TIME = 0.0
 LAST_HINT_TIME = 0.0
 COOLDOWN_PERIOD = 2.0  # Allow sequential catches very quickly
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
+CHANNEL_IMAGES = {}
+
 
 SPECIAL_SPECIES = ["mew", "celebi", "jirachi", "deoxys", "phione", "manaphy", "darkrai", "shaymin", "arceus", "victini", "keldeo", "meloetta", "genesect", "diancie", "hoopa", "volcanion", "magearna", "marshadow", "zeraora", "meltan", "melmetal", "zarude", "calyrex", "articuno", "zapdos", "moltres", "mewtwo", "raikou", "entei", "suicune", "lugia", "ho-oh", "regirock", "regice", "registeel", "latias", "latios", "kyogre", "groudon", "rayquaza", "uxie", "mesprit", "azelf", "dialga", "palkia", "heatran", "regigigas", "giratina", "cresselia", "cobalion", "terrakion", "virizion", "tornadus", "thundurus", "reshiram", "zekrom", "landorus", "kyurem", "xerneas", "yveltal", "zygarde", "type: null", "silvally", "tapu koko", "tapu lele", "tapu bulu", "tapu fini", "cosmog", "cosmoem", "solgaleo", "lunala", "nihilego", "buzzwole", "pheromosa", "xurkitree", "celesteela", "kartana", "guzzlord", "necrozma", "poipole", "naganadel", "stakataka", "blacephalon", "zamazenta", "zacian", "eternatus", "kubfu", "urshifu", "regieleki", "regidrago", "glastrier", "spectrier", "enamorus"]
 
@@ -199,8 +201,10 @@ def on_message(resp, bot, token):
                 global LAST_HINT_TIME
                 time.sleep(2.5)
                 LAST_HINT_TIME = time.time()
-                bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
+                prefix = get_node_state(token).get("prefix", ".")
+                bot.sendMessage(channel_id, f"{prefix}h")
             threading.Thread(target=send_delayed_hint, daemon=True).start()
+
 
         # Hint Solver
         if author_id == POKETWO_ID and "the pokémon is" in content.lower():
@@ -223,10 +227,14 @@ def on_message(resp, bot, token):
                     import random
                     guess = random.choice(matches)
                     print(f"\033[92m[{PROJECT_NAME}] [AI-HINT] Solved hint as: {guess}. Sending catch...\033[0m")
-                    time.sleep(2.0)
-                    bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {guess}")
                     global LAST_CATCH_TIME
                     LAST_CATCH_TIME = time.time()
+                    import threading
+                    def send_hint_catch():
+                        time.sleep(2.0)
+                        prefix = get_node_state(token).get("prefix", ".")
+                        bot.sendMessage(channel_id, f"{prefix}c {guess}")
+                    threading.Thread(target=send_hint_catch, daemon=True).start()
                 else:
                     print(f"\033[91m[{PROJECT_NAME}] Could not solve hint for pattern: {hint_clean}\033[0m")
             except Exception as e:
@@ -256,8 +264,16 @@ def on_message(resp, bot, token):
                         print(f"\033[93m[{PROJECT_NAME}] New Pokemon discovered from flee message: {fled_name}. Adding to database.\033[0m")
                         with open("pokemon.txt", "a", encoding="utf-8") as f:
                             f.write(f"\n{fled_name}")
+                    
+                    # Log failure to UI to clear the "Awaiting" message
+                    try:
+                        from utils import log_to_nexus
+                        img_url = CHANNEL_IMAGES.get(channel_id, "")
+                        log_to_nexus(fled_name, get_rarity(fled_name), token, img_url, fled_text, bot_source="POKETWO", status="failed")
+                    except: pass
             except Exception as e:
                 pass
+
 
         # AI Image Catching Logic
         embeds = msg.get("embeds", [])
@@ -271,6 +287,7 @@ def on_message(resp, bot, token):
                 is_spawn_embed = "wild pokémon has appeared" in title or "wild pokémon has appeared" in desc or "guess the pokémon" in title or "guess the pokémon" in desc or (url and ("pokemon" in url.lower() or "poketwo" in url.lower()))
                 
                 if is_spawn_embed and url:
+                    CHANNEL_IMAGES[channel_id] = url
                     if not state.get("catch_enabled", True):
                         return
 
@@ -301,7 +318,8 @@ def on_message(resp, bot, token):
                             print(f"\033[92m[{PROJECT_NAME}] [AI] Identified: {p_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...\033[0m")
                             time.sleep(catch_delay)
                             
-                            bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")
+                            prefix = get_node_state(token).get("prefix", ".")
+                            bot.sendMessage(c_id, f"{prefix}c {p_name}")
                             print(f"\033[92m[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}\033[0m")
                             # Update cooldown timestamp
                             global LAST_CATCH_TIME
@@ -313,13 +331,14 @@ def on_message(resp, bot, token):
                                 if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
                                     print(f"\033[93m[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...\033[0m")
                                     LAST_HINT_TIME = time.time()
-                                    bot.sendMessage(c_id, f"<@{POKETWO_ID}> h")
+                                    bot.sendMessage(c_id, f"{prefix}h")
                             threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
                             
                         threading.Thread(target=delayed_catch, args=(pokemon_name, channel_id), daemon=True).start()
                     else:
                         print(f"\033[93m[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.\033[0m")
-                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
+                        prefix = get_node_state(token).get("prefix", ".")
+                        bot.sendMessage(channel_id, f"{prefix}h")
 
         # Immediate button click catching
         if author_id == POKETWO_ID and msg.get("components"):
