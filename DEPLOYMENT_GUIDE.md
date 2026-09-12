@@ -15,6 +15,41 @@ Welcome to **Project Dark v4**! This guide will walk you through exactly how to 
 
 ---
 
+## ⚙️ CONFIG.TXT TEMPLATE
+
+Your `config.txt` file (located in the root folder) controls all the settings for the bot. Below is a template you can copy and use. Replace the placeholder values with your actual Discord token and Channel IDs.
+
+```ini
+# --- PROJECT DARK CONFIGURATION ---
+
+# 1. Credentials
+token=YOUR_DISCORD_USER_TOKEN
+listener_id=self
+prefix=.
+
+# 2. Autocatcher Settings
+catch_enabled=true
+pokemon_channel=YOUR_DISCORD_CHANNEL_ID
+
+# 3. AI Vision Settings (DO NOT CHANGE unless you know what you are doing)
+huggingface_token=hf_YOUR_TOKEN_HERE_IF_NEEDED
+huggingface_model=imjeffhi/pokemon_classifier
+
+# 4. Spammer / Trigger Settings (Optional)
+spam_enabled=false
+spam_channel_id=YOUR_SPAM_CHANNEL_ID
+spam_delay=8.0
+
+# 5. Alerts
+notifications_enabled=true
+```
+
+> [!WARNING]
+> **NEVER share your Discord token with anyone!** 
+> If deploying to Render.com, make sure your GitHub repository is **PRIVATE** before committing your token.
+
+---
+
 ## 💻 DEPLOYMENT METHOD 1: LOCAL MACHINE (Windows / macOS / Linux)
 
 Running locally is best if you want to use the web dashboard on your own PC and see the AI catch in real-time.
