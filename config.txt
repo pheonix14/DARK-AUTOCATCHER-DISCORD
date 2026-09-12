@@ -1,0 +1,11 @@
+token=YOUR_TOKEN_HERE
+listener_id=self
+prefix=.
+catch_enabled=false
+pokemon_channel=/1543103920052637700
+huggingface_token=
+huggingface_model=imjeffharris/pokemon_classifier
+notifications_enabled=false
+spam_enabled=true
+spam_channel_id=1543103920052637700
+spam_delay=1.0

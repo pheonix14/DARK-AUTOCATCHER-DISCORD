@@ -1,0 +1,247 @@
+import os
+import requests
+import time
+import random
+from PIL import Image
+from io import BytesIO
+from dotenv import load_dotenv
+from utils import log_to_nexus
+from utility_controller import get_node_state
+
+# SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
+
+load_dotenv()
+POKETWO_ID = "716390085896962058"
+PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
+
+# Global cooldown tracker
+LAST_CATCH_TIME = 0.0
+COOLDOWN_PERIOD = 120.0  # 2 minutes cooldown
+ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
+
+SPECIAL_SPECIES = ["mew", "celebi", "jirachi", "deoxys", "phione", "manaphy", "darkrai", "shaymin", "arceus", "victini", "keldeo", "meloetta", "genesect", "diancie", "hoopa", "volcanion", "magearna", "marshadow", "zeraora", "meltan", "melmetal", "zarude", "calyrex", "articuno", "zapdos", "moltres", "mewtwo", "raikou", "entei", "suicune", "lugia", "ho-oh", "regirock", "regice", "registeel", "latias", "latios", "kyogre", "groudon", "rayquaza", "uxie", "mesprit", "azelf", "dialga", "palkia", "heatran", "regigigas", "giratina", "cresselia", "cobalion", "terrakion", "virizion", "tornadus", "thundurus", "reshiram", "zekrom", "landorus", "kyurem", "xerneas", "yveltal", "zygarde", "type: null", "silvally", "tapu koko", "tapu lele", "tapu bulu", "tapu fini", "cosmog", "cosmoem", "solgaleo", "lunala", "nihilego", "buzzwole", "pheromosa", "xurkitree", "celesteela", "kartana", "guzzlord", "necrozma", "poipole", "naganadel", "stakataka", "blacephalon", "zamazenta", "zacian", "eternatus", "kubfu", "urshifu", "regieleki", "regidrago", "glastrier", "spectrier", "enamorus"]
+
+def get_rarity(name):
+    name_lower = name.lower()
+    if "shiny" in name_lower: return "SHINY"
+    for s in SPECIAL_SPECIES:
+        if s in name_lower: return "LEGENDARY"
+    return "COMMON"
+
+def query_huggingface(image_bytes, hf_token, model_id):
+    """Queries Hugging Face inference endpoint for image classification with retry loop on model loading."""
+    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    
+    for attempt in range(5):
+        try:
+            response = requests.post(api_url, headers=headers, data=image_bytes, timeout=15)
+            res = response.json()
+            if isinstance(res, dict) and "error" in res:
+                err_msg = res.get("error", "")
+                if "loading" in err_msg.lower():
+                    # Model loading cold-start, wait and retry
+                    est_time = min(float(res.get("estimated_time", 6.0)), 12.0)
+                    print(f"[{PROJECT_NAME}] Hugging Face model is loading. Waiting {est_time}s (Attempt {attempt+1}/5)...")
+                    time.sleep(est_time)
+                    continue
+                else:
+                    print(f"[{PROJECT_NAME}] Hugging Face API Error: {err_msg}")
+                    return None
+            return res
+        except Exception as e:
+            print(f"[{PROJECT_NAME}] HF request failed: {e}")
+            time.sleep(2)
+    return None
+
+def classify_pokemon(image_url, hf_token, model_id):
+    """Downloads spawn image and classifies it using Hugging Face."""
+    try:
+        response = requests.get(image_url, timeout=10)
+        if response.status_code != 200:
+            return None
+        
+        img_bytes = response.content
+        res = query_huggingface(img_bytes, hf_token, model_id)
+        
+        if isinstance(res, list) and len(res) > 0:
+            top_prediction = res[0]
+            pred_name = top_prediction.get("label", "").lower().strip()
+            # Clean up potential prefix formatting from classifiers (e.g. "pikachu" instead of "n012345_pikachu")
+            if "_" in pred_name:
+                pred_name = pred_name.split("_")[-1]
+            return pred_name
+    except Exception as e:
+        print(f"[{PROJECT_NAME}] Image classification exception: {e}")
+    return None
+
+def try_click_catch_button(bot, msg, channel_id):
+    """Clicks the catch button immediately if present on the spawn message."""
+    try:
+        components = msg.get("components", [])
+        for action_row in components:
+            for component in action_row.get("components", []):
+                if component.get("type") == 2:  # Button component
+                    label = component.get("label", "").lower()
+                    custom_id = component.get("custom_id", "")
+                    if "catch" in label or "c" == label:
+                        from interaction_handler import get_bot
+                        b = get_bot() or bot
+                        b.click(
+                            msg.get("author", {}).get("id", ""),
+                            channel_id,
+                            msg.get("id", ""),
+                            msg.get("flags", 0),
+                            custom_id,
+                            2
+                        )
+                        log_to_nexus("Button Catch", "COMMON", "", details="Clicked catch button", bot_source="POKETWO")
+                        return True
+    except Exception as e:
+        print(f"[{PROJECT_NAME}] [BUTTON] Click error: {e}")
+    return False
+
+def on_message(resp, bot, token):
+    global LAST_CATCH_TIME, ACTIVE_CONFIRMATIONS
+    
+    if resp.event.message:
+        msg = resp.parsed.auto()
+        author_id = msg.get("author", {}).get("id")
+        content = msg.get("content", "")
+        channel_id = msg.get("channel_id")
+        
+        # Captcha Security Failsafe Scanner
+        if author_id == POKETWO_ID and ("verify" in content.lower() or "captcha" in content.lower() or ("http" in content.lower() and "link" in content.lower())):
+            try:
+                from web_server import add_log
+                update_node_state(token, {"catch_enabled": False, "spam_enabled": False})
+                add_log(f"ALERT: Captcha detected! Link: {content} — AUTO-HALTED ALL ENGINES FOR SECURITY.")
+            except Exception as e:
+                print(f"[{PROJECT_NAME}] Failed to halt on captcha: {e}")
+        
+        # Prompt Confirmation Scanner
+        if author_id == POKETWO_ID and msg.get("components"):
+            yes_id = None
+            no_id = None
+            for row in msg.get("components", []):
+                for component in row.get("components", []):
+                    if component.get("type") == 2:
+                        label = component.get("label", "").lower()
+                        custom_id = component.get("custom_id", "")
+                        style = component.get("style")
+                        if "yes" in label or "confirm" in label or "accept" in label or style == 3:
+                            yes_id = custom_id
+                        if "no" in label or "cancel" in label or "deny" in label or style == 4:
+                            no_id = custom_id
+            if yes_id or no_id:
+                ACTIVE_CONFIRMATIONS[channel_id] = {
+                    "message_id": msg.get("id"),
+                    "author_id": msg.get("author", {}).get("id"),
+                    "flags": msg.get("flags", 0),
+                    "yes_id": yes_id,
+                    "no_id": no_id,
+                    "timestamp": time.time()
+                }
+
+        # Detection of Catch Confirmation
+        if author_id == POKETWO_ID and "congratulations" in content.lower():
+            try:
+                name_part = content.split("caught a level")[1].split("!")[0].strip()
+                pokemon_name = " ".join(name_part.split()[1:]) if name_part.split()[0].isdigit() else name_part
+                rarity = get_rarity(pokemon_name)
+                
+                from utils import get_self_id
+                self_id = get_self_id(token)
+                is_self = self_id and (self_id in content or f"<@{self_id}>" in content)
+                status_str = "success" if is_self else "failed"
+                
+                img_url = CHANNEL_IMAGES.get(channel_id, "")
+                log_to_nexus(pokemon_name, rarity, token, img_url, content, bot_source="POKETWO", status=status_str)
+            except: pass
+
+        # AI Image Catching Logic
+        embeds = msg.get("embeds", [])
+        if author_id == POKETWO_ID and embeds:
+            for embed in embeds:
+                url = embed.get("image", {}).get("url", "")
+                if url and "pokemon" in url.lower():
+                    state = get_node_state(token)
+                    if not state.get("catch_enabled", True):
+                        return
+
+                    # COOLDOWN CHECK: Skip if a catch happened in the last 2 minutes
+                    curr_time = time.time()
+                    time_passed = curr_time - LAST_CATCH_TIME
+                    if time_passed < COOLDOWN_PERIOD:
+                        wait_remaining = int(COOLDOWN_PERIOD - time_passed)
+                        print(f"[{PROJECT_NAME}] Cooldown active: Ignoring spawn ({wait_remaining}s remaining).")
+                        return
+
+                    hf_token = state.get("huggingface_token", "").strip()
+                    hf_model = state.get("huggingface_model", "imjeffharris/pokemon_classifier").strip()
+                    
+                    if not hf_token:
+                        print(f"[{PROJECT_NAME}] Hugging Face API token is missing! Please configure it in Settings.")
+                        return
+
+                    print(f"[{PROJECT_NAME}] Spawn detected. Classifying via Hugging Face model: {hf_model}...")
+                    pokemon_name = classify_pokemon(url, hf_token, hf_model)
+
+                    if pokemon_name:
+                        rarity = get_rarity(pokemon_name)
+                        
+                        catch_delay = 3.0
+                        print(f"[{PROJECT_NAME}] [AI] Identified: {pokemon_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...")
+                        time.sleep(catch_delay)
+                        
+                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {pokemon_name}")
+                        print(f"[{PROJECT_NAME}] [AI] CATCH sent for: {pokemon_name}")
+                        # Update cooldown timestamp to block future catches for 120 seconds
+                        LAST_CATCH_TIME = time.time()
+                    else:
+                        print(f"[{PROJECT_NAME}] Could not identify Pokemon from image.")
+
+        # Immediate button click catching
+        if author_id == POKETWO_ID and msg.get("components"):
+            state = get_node_state(token)
+            if state.get("catch_enabled", True):
+                # Apply same cooldown rules for button clicks
+                curr_time = time.time()
+                if curr_time - LAST_CATCH_TIME >= COOLDOWN_PERIOD:
+                    if try_click_catch_button(bot, msg, channel_id):
+                        LAST_CATCH_TIME = time.time()
+
+def run_spammer(bot, token):
+    import random
+    import string
+    from utils import read_config
+    
+    wordlist = [
+        "is anyone here?", "hello", "wow this is cool", "what pokemon are you looking for?",
+        "catching legends!", "almost level up", "keep spamming guys", "nice caught",
+        "let us spawn something", "hope it is shiny", "poketwo spawn rate is high today"
+    ]
+    
+    print(f"[{PROJECT_NAME}] [SPAMMER] Thread initialized.")
+    while True:
+        try:
+            config = read_config()
+            spam_enabled = config.get("spam_enabled", "false") == "true"
+            spam_chan = config.get("spam_channel_id", "").strip()
+            delay = float(config.get("spam_delay", "8.0"))
+            
+            if spam_enabled and spam_chan:
+                msg_content = random.choice(wordlist) if random.random() > 0.3 else "".join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(6, 12)))
+                bot.sendMessage(spam_chan, msg_content)
+                time.sleep(delay)
+            else:
+                time.sleep(3)
+        except Exception as e:
+            time.sleep(5)
+
+def setup(bot, token=None):
+    print(f"[{PROJECT_NAME}] I_CATCH MODULE ARMED (HUGGING FACE ONLY).")
+    bot.gateway.command({"function": lambda resp: on_message(resp, bot, token), "name": "MESSAGE_CREATE"})
+    
+    import threading
+    threading.Thread(target=run_spammer, args=(bot, token), daemon=True).start()

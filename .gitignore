@@ -1,0 +1,5 @@
+﻿node_modules/
+target/
+.env
+.venv
+__pycache__/

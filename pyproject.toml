@@ -1,0 +1,13 @@
+[project]
+name = "python-template"
+version = "0.1.0"
+description = ""
+authors = ["phoenix14 <phoenix14@sf-nodes.io>"]
+requires-python = ">=3.11"
+dependencies = [
+    "discord-py>=2.5.2",
+    "discum>=1.4.1",
+    "flask>=3.1.1",
+    "imagehash>=4.3.2",
+    "requests>=2.32.4",
+]

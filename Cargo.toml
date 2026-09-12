@@ -1,0 +1,19 @@
+[package]
+name = "dark"
+version = "1.0.0"
+edition = "2021"
+authors = ["phoenix14 <phoenix14@sf-nodes.io>"]
+
+[dependencies]
+tokio = { version = "1.35", features = ["full"] }
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["fs", "cors"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+notify = "6.1"
+futures-util = "0.3"
+image = "0.24"
+dotenv = "0.15"
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+url = "2.5"
