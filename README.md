@@ -27,6 +27,18 @@
 
 ---
 
+## 📑 QUICK NAVIGATION
+
+- [📸 Dashboard Screenshots & Page Guide](#-dashboard-screenshots--page-guide)
+- [✨ Why Project Dark? (Core Features)](#-why-project-dark)
+- [⚙️ Config Template Setup](#️-config-template-setup)
+- [🔑 How to Get Your Discord Token](#-how-to-get-your-discord-token)
+- [💻 Deployment: Local Machine](#-deployment-local-machine)
+- [☁️ Deployment: Render.com Cloud (Free 24/7)](#️-deployment-rendercom-cloud-free-247)
+- [⚠️ Disclaimer & Warning](#️-disclaimer--warning)
+
+---
+
 ## 📸 DASHBOARD SCREENSHOTS & PAGE GUIDE
 
 PROJECT DARK v4 features a responsive 8-page Web Dashboard. Each page is crafted with glassmorphic visuals, smooth typography, and real-time WebSocket connectivity:
@@ -130,28 +142,42 @@ PROJECT DARK isn't just an autocatcher—it's a **command center**. We moved awa
 
 ---
 
-## ⚙️ CONFIGURATION (config.txt)
+## ⚙️ Config Template Setup
 
-The app reads and writes its settings in real time from a local `config.txt` file at the root. You can edit this directly or use the beautiful web Dashboard UI!
+Your `config.txt` file (located in the root folder) controls all the settings for the bot. Below is a template you can copy and use. Replace the placeholder values with your actual Discord token and Channel IDs.
 
 ```ini
+# --- PROJECT DARK CONFIGURATION ---
+
+# 1. Credentials
 token=YOUR_DISCORD_USER_TOKEN
 listener_id=self
 prefix=.
+
+# 2. Autocatcher Settings
 catch_enabled=true
 pokemon_channel=YOUR_DISCORD_CHANNEL_ID
-huggingface_token=hf_YOUR_TOKEN
+
+# 3. AI Vision Settings (DO NOT CHANGE unless you know what you are doing)
+huggingface_token=hf_YOUR_TOKEN_HERE_IF_NEEDED
 huggingface_model=imjeffhi/pokemon_classifier
-notifications_enabled=true
+
+# 4. Spammer / Trigger Settings (Optional)
 spam_enabled=false
 spam_channel_id=YOUR_SPAM_CHANNEL_ID
 spam_delay=8.0
+
+# 5. Alerts
+notifications_enabled=true
 ```
 
-### 🔑 How to Get Your Discord Token
-
 > [!WARNING]
-> NEVER share your token with anyone!
+> **NEVER share your Discord token with anyone!** 
+> If deploying to Render.com, make sure your GitHub repository is **PRIVATE** before committing your token.
+
+---
+
+## 🔑 How to Get Your Discord Token
 
 **On PC (Browser):**
 1. Open Discord in your web browser and press `F12` (or `Ctrl+Shift+I`) to open Developer Tools.
@@ -169,55 +195,69 @@ spam_delay=8.0
 
 ---
 
-## 🚀 LOCAL EXECUTION
+## 💻 Deployment: Local Machine
 
-Ensure you have **Python 3.10+** installed.
+Running locally is best if you want to use the web dashboard on your own PC and see the AI catch in real-time. Ensure you have **Python 3.10+** and **Git** installed.
 
-1. **Clone & Enter Repository**
+1. **Clone your Fork**
+   Open your terminal/command prompt and clone the copy you just forked:
    ```bash
-   git clone https://github.com/pheonix14/project-dark.git
+   git clone https://github.com/YOUR_USERNAME/project-dark.git
    cd project-dark
    ```
-2. **Install Dependencies**
+
+2. **Configure your Token**
+   Open the `config.txt` file and replace `YOUR_DISCORD_USER_TOKEN` with your actual Discord token. Make sure `pokemon_channel` is also set to the channel ID where Pokétwo spawns.
+
+3. **Install Dependencies**
+   Install the required AI vision libraries and web server dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-3. **Launch Application**
+
+4. **Launch the Core Engine**
+   Start the application:
    ```bash
    python main.py
    ```
-4. **Open Dashboard**
-   Navigate to `http://localhost:8085` in your browser to view the control panel.
+   *The system will automatically download the required ONNX AI models on first boot.*
+
+5. **Open the Dashboard**
+   Navigate to **`http://localhost:8085`** in your browser. You can now monitor everything from the beautiful glassmorphic UI!
 
 ---
 
-## ☁️ DEPLOYMENT PROTOCOLS
+## ☁️ Deployment: Render.com Cloud (Free 24/7)
 
-### PROTOCOL A: DOCKER DEPLOYMENT
-You can package the application into a container using the provided `Dockerfile`.
+Running on Render.com is perfect if you want the autocatcher to run 24/7 without keeping your computer on.
 
-```bash
-# 1. Build Docker Image
-docker build -t project-dark-node .
+> [!WARNING]
+> You **MUST** put your tokens in `config.txt` inside your GitHub repository *before* you deploy to Render. Otherwise, the cloud instance will crash on startup. Make sure your forked repository is set to **PRIVATE** before putting your token in it!
 
-# 2. Execute Container
-docker run -d -p 8085:8085 -p 8086:8086 --name dark-node project-dark-node
-```
+1. **Prepare your GitHub Repo**
+   - Go to your forked repository on GitHub.
+   - Go to **Settings**, scroll to the bottom, and click **Change visibility** to make the repository **PRIVATE**.
+   - Edit the `config.txt` file directly on GitHub and insert your `token` and `pokemon_channel`. Save the commit.
 
-### PROTOCOL B: RENDER.COM DEPLOYMENT (FREE 24/7 HOSTING)
+2. **Connect to Render**
+   - Go to [Render.com](https://render.com) and sign up for a free account using your GitHub login.
+   - Click **New +** at the top right and select **Web Service**.
+   - Connect your GitHub account and select your private `project-dark` repository.
 
-Prime the project for free cloud hosting on Render. 
+3. **Configure the Service**
+   - **Name**: `dark-node` (or whatever you like)
+   - **Region**: Any (Choose the one closest to you)
+   - **Branch**: `main`
+   - **Runtime**: `Docker` (Render will automatically detect the `Dockerfile` and `render.yaml` in the repository).
+   - **Instance Type**: `Free`
 
-> [!IMPORTANT]
-> **Before deploying**, you MUST edit your `config.txt` file and fill in your `token` and `pokemon_channel` IDs! The cloud instance will crash or idle if tokens are missing.
+4. **Deploy & Forget**
+   - Click **Create Web Service**.
+   - Render will begin building the Docker container. This takes a few minutes because it has to install the ONNX AI engine.
+   - Once it says **Live**, your bot is running 24/7! 
 
-1. Push your configured project to a **Private** GitHub repository.
-2. Connect your repository to [Render.com](https://render.com).
-3. Select **Web Service** deployment.
-4. Use the following specifications:
-   - **Environment**: `Docker`
-   - Render will automatically use the provided `Dockerfile` and `render.yaml` configuration to boot.
-5. The service will run completely inside Render's 300MB RAM spec. Note that the live dashboard WebSocket logs may not stream correctly on Render's free tier firewall, but the background bot will execute perfectly!
+> [!NOTE]
+> On the free tier of Render, incoming web ports are heavily firewalled, meaning you might not be able to access the web dashboard UI remotely. However, the background Discord bot and ONNX vision engine will run perfectly and catch Pokémon silently!
 
 ---
 
