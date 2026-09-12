@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT DARK v3.0.0 — Pokédex Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/common/style.css">
+</head>
+<body>
+
+    <!-- PAGE LOADER -->
+    <div id="loader">
+        <div class="loader-logo">PROJECT DARK</div>
+        <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div><div id="cursor-ring"></div>
+
+    <!-- BACKGROUNDS -->
+    <div id="bg-wrap"><img id="bg-img" src="" alt="" class="fade-in"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-color-bleed" id="colorBleed"></div>
+    <div class="vignette"></div>
+
+    <!-- WATERMARK -->
+    <div id="wm">PROJECT DARK</div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="notif-toast">
+        <button class="notif-close" onclick="closeToast()">✕</button>
+        <div class="notif-title" id="nt-title">SYSTEM</div>
+        <div class="notif-body" id="nt-body"></div>
+    </div>
+
+    <!-- Header Placeholder -->
+    <div id="header-placeholder"></div>
+
+    <!-- SCROLL COUNTER -->
+    <div class="scroll-counter"><span id="scrollPct">00</span>%</div>
+
+    <!-- ═══ SETTINGS SECTION ═══ -->
+    <section id="hero">
+        <p class="hero-eyebrow">◈ Config — Preferences</p>
+        <h1 class="hero-h1">SYSTEM<br><em>SETTINGS</em></h1>
+        
+        <div class="cards" style="margin-top:40px;">
+            <!-- Core config -->
+            <div class="card">
+                <div class="card-num">CFG_1</div>
+                <div class="card-icon">◈</div>
+                <h3>System Parameters</h3>
+                <p style="margin-bottom:20px;">Toggles and engine parameters.</p>
+                
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Restrict Commands</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Ignore other accounts</span>
+                    </div>
+                    <div class="toggle-switch" id="restrictSwitch" onclick="toggleRestrictSelf()"></div>
+                </div>
+
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Web Notifications</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Alerts on rare catches</span>
+                    </div>
+                    <div class="toggle-switch" id="notifySwitch" onclick="toggleNotifications()"></div>
+                </div>
+
+                <div class="form-group" style="margin-top:20px;">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Command Prefix</label>
+                    <input type="text" id="prefix" placeholder="." maxlength="3">
+                </div>
+                
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Listening Channel</label>
+                    <input type="text" id="pokemon_channel" placeholder="Channel ID">
+                </div>
+            </div>
+
+            <!-- Credentials -->
+            <div class="card">
+                <div class="card-num">CFG_2</div>
+                <div class="card-icon">◎</div>
+                <h3 style="color:var(--c2);">Credentials & API</h3>
+                <p style="margin-bottom:20px;">Discord and Hugging Face Authentication.</p>
+                
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Discord User Token</label>
+                    <input type="password" id="token" placeholder="Paste Discord Account Token">
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Hugging Face Token</label>
+                    <input type="password" id="huggingface_token" placeholder="hf_xxxxxxxxxxxxxx">
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Vision Model ID</label>
+                    <input type="text" id="huggingface_model" placeholder="imjeffharris/pokemon_classifier">
+                </div>
+
+                <button class="btn" style="width:100%; margin-top:10px; border-color:var(--c2); color:var(--c2);" onclick="saveCredentialsSettings()">Save Credentials</button>
+            </div>
+
+            <!-- Auto-Spammer -->
+            <div class="card">
+                <div class="card-num">CFG_3</div>
+                <div class="card-icon">⬡</div>
+                <h3 style="color:#ff3333;">Auto-Spammer</h3>
+                <p style="margin-bottom:20px; color:rgba(255,255,255,0.5);">Periodic message dispatch.</p>
+                
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Enable Spammer</span>
+                    </div>
+                    <div class="toggle-switch" id="spamSwitch" onclick="toggleSpammer()"></div>
+                </div>
+
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Target Channel ID</label>
+                    <input type="text" id="spam_channel_id" placeholder="Channel ID">
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Spam Delay (Seconds)</label>
+                    <input type="text" id="spam_delay" placeholder="45.0">
+                    <div style="font-family:'Space Grotesk'; font-size:10px; color:#ff3333; margin-top:5px; font-weight:700;">Note: Delay below 45s risks suspension.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-top">
+            <div class="footer-logo">PROJECT DARK</div>
+            <ul class="footer-links">
+                <li><a href="/pages/index.html">◈ Home</a></li>
+                <li><a href="/pages/settings.html">⬡ Settings</a></li>
+                <li><a href="/pages/premium.html">◉ Premium</a></li>
+                <li><a href="/pages/about.html">◎ About</a></li>
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
+        </div>
+    </footer>
+
+    <!-- Sidebar Menu Placeholder -->
+    <div id="sidebar-placeholder"></div>
+
+    <script src="/common/common.js"></script>
+    <script src="/common/navigationbar.js"></script>
+    <script src="/common/menue.js"></script>
+</body>
+</html>

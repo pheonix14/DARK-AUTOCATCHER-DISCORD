@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT DARK v3.0.0 — Pokédex Interact</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/common/style.css">
+</head>
+<body>
+
+    <!-- PAGE LOADER -->
+    <div id="loader">
+        <div class="loader-logo">PROJECT DARK</div>
+        <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div><div id="cursor-ring"></div>
+
+    <!-- BACKGROUNDS -->
+    <div id="bg-wrap"><img id="bg-img" src="" alt="" class="fade-in"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-color-bleed" id="colorBleed"></div>
+    <div class="vignette"></div>
+
+    <!-- WATERMARK -->
+    <div id="wm">PROJECT DARK</div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="notif-toast">
+        <button class="notif-close" onclick="closeToast()">✕</button>
+        <div class="notif-title" id="nt-title">SYSTEM</div>
+        <div class="notif-body" id="nt-body"></div>
+    </div>
+
+    <!-- Header Placeholder -->
+    <div id="header-placeholder"></div>
+
+    <!-- SCROLL COUNTER -->
+    <div class="scroll-counter"><span id="scrollPct">00</span>%</div>
+
+    <!-- ═══ INTERACT SECTION ═══ -->
+    <section id="hero">
+        <p class="hero-eyebrow">◈ Actions — Dispatch</p>
+        <h1 class="hero-h1">POKÉDEX<br><em>INTERACT</em></h1>
+        
+        <div class="cards" style="margin-top:40px;">
+            <!-- Component Trigger -->
+            <div class="card">
+                <div class="card-num">ACT_1</div>
+                <div class="card-icon">◈</div>
+                <h3>Component Click Trigger</h3>
+                <p style="margin-bottom:20px;">Dispatch automated button clicks to Discord messages.</p>
+                <div class="form-group"><input type="text" id="react-channel" placeholder="Discord Channel ID"></div>
+                <div class="form-group"><input type="text" id="react-msgid" placeholder="Discord Message ID"></div>
+                <div class="form-group"><input type="text" id="react-label" placeholder="Catch (Button Label)"></div>
+                <button class="btn" onclick="clickDiscordButton()">Trigger Component</button>
+            </div>
+
+            <!-- Append Reaction -->
+            <div class="card">
+                <div class="card-num">ACT_2</div>
+                <div class="card-icon">◉</div>
+                <h3 style="color:var(--c2);">Append Reaction</h3>
+                <p style="margin-bottom:20px;">Push explicit reactions onto active target messages.</p>
+                <div class="form-group"><input type="text" id="react-chan" placeholder="Discord Channel ID"></div>
+                <div class="form-group"><input type="text" id="react-message" placeholder="Discord Message ID"></div>
+                <div class="form-group"><input type="text" id="react-emoji" placeholder="Reaction Character"></div>
+                <button class="btn" style="border-color:var(--c2); color:var(--c2);" onclick="reactDiscordMessage()">Push Reaction</button>
+            </div>
+
+            <!-- Commands Reference -->
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-num">CMD_REF</div>
+                <div class="card-icon">⬡</div>
+                <h3>System Commands Reference</h3>
+                <p style="margin-bottom:20px;">Available Discord Commands</p>
+                
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:20px; font-family:'Space Grotesk'; font-size:12px;">
+                    <div><strong style="color:var(--c1);">.help</strong><br><span style="color:rgba(255,255,255,0.5);">View documentation</span></div>
+                    <div><strong style="color:var(--c1);">.ping</strong><br><span style="color:rgba(255,255,255,0.5);">Check latency</span></div>
+                    <div><strong style="color:var(--c1);">.status</strong><br><span style="color:rgba(255,255,255,0.5);">Engine stats</span></div>
+                    <div><strong style="color:var(--c1);">.dark</strong><br><span style="color:rgba(255,255,255,0.5);">Toggle engine</span></div>
+                    <div><strong style="color:var(--c1);">.stop</strong><br><span style="color:rgba(255,255,255,0.5);">Emergency halt</span></div>
+                    <div><strong style="color:var(--c2);">.yes / .accept</strong><br><span style="color:rgba(255,255,255,0.5);">Confirm prompt</span></div>
+                    <div><strong style="color:var(--c1);">.no / .disagree</strong><br><span style="color:rgba(255,255,255,0.5);">Cancel prompt</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-top">
+            <div class="footer-logo">PROJECT DARK</div>
+            <ul class="footer-links">
+                <li><a href="/pages/index.html">◈ Home</a></li>
+                <li><a href="/pages/settings.html">⬡ Settings</a></li>
+                <li><a href="/pages/premium.html">◉ Premium</a></li>
+                <li><a href="/pages/about.html">◎ About</a></li>
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
+        </div>
+    </footer>
+
+    <!-- Sidebar Menu Placeholder -->
+    <div id="sidebar-placeholder"></div>
+
+    <script src="/common/common.js"></script>
+    <script src="/common/navigationbar.js"></script>
+    <script src="/common/menue.js"></script>
+</body>
+</html>

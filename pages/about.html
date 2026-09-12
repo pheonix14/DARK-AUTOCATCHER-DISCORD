@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT DARK v3.0.0 — About Pokédex</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/common/style.css">
+</head>
+<body>
+
+    <!-- PAGE LOADER -->
+    <div id="loader">
+        <div class="loader-logo">PROJECT DARK</div>
+        <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div><div id="cursor-ring"></div>
+
+    <!-- BACKGROUNDS -->
+    <div id="bg-wrap"><img id="bg-img" src="" alt="" class="fade-in"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-color-bleed" id="colorBleed"></div>
+    <div class="vignette"></div>
+
+    <!-- WATERMARK -->
+    <div id="wm">PROJECT DARK</div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="notif-toast">
+        <button class="notif-close" onclick="closeToast()">✕</button>
+        <div class="notif-title" id="nt-title">SYSTEM</div>
+        <div class="notif-body" id="nt-body"></div>
+    </div>
+
+    <!-- Header Placeholder -->
+    <div id="header-placeholder"></div>
+
+    <!-- SCROLL COUNTER -->
+    <div class="scroll-counter"><span id="scrollPct">00</span>%</div>
+
+    <!-- ═══ ABOUT SECTION ═══ -->
+    <section id="hero">
+        <p class="hero-eyebrow">◈ Information — Author</p>
+        <h1 class="hero-h1">PROJECT<br><em>DARK</em></h1>
+        
+        <div class="cards" style="margin-top:40px;">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-num">INFO_01</div>
+                <div class="card-icon">◈</div>
+                <h3>About PROJECT DARK <span style="font-family:'Space Grotesk'; font-size:12px; color:var(--c1);">v3.0.0</span></h3>
+                <p style="margin-bottom:20px;">Next-Generation Pokémon Selfbot Control Engine</p>
+                
+                <div style="font-family:'Space Grotesk'; font-size:14px; color:rgba(255,255,255,0.7); line-height:1.6; margin-bottom:20px;">
+                    PROJECT DARK is an advanced web-driven selfbot control panel designed for research and educational purposes. Created, engineered, and maintained exclusively by <strong style="color:var(--c1);">pheonix14</strong>.
+                </div>
+
+                <div style="border-left:2px solid var(--c2); padding-left:15px; margin-bottom:20px;">
+                    <div style="font-family:'Space Grotesk'; font-weight:700; color:var(--c2); margin-bottom:5px;">Research Disclaimer</div>
+                    <p style="font-size:12px; color:rgba(255,255,255,0.5);">
+                        This program is distributed solely for testing API thresholds, automated UI interaction mechanics, and image recognition patterns. We are not responsible for any misuse, account bans, rules violations, or damages arising from the use of this software. Run completely at your own discretion.
+                    </p>
+                </div>
+
+                <div style="text-align:center; margin-top:30px; font-size:10px; color:rgba(255,255,255,0.3); border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    © 2026 PROJECT DARK v3.0.0 • developed by pheonix14 • All rights reserved
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-top">
+            <div class="footer-logo">PROJECT DARK</div>
+            <ul class="footer-links">
+                <li><a href="/pages/index.html">◈ Home</a></li>
+                <li><a href="/pages/settings.html">⬡ Settings</a></li>
+                <li><a href="/pages/premium.html">◉ Premium</a></li>
+                <li><a href="/pages/about.html">◎ About</a></li>
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
+        </div>
+    </footer>
+
+    <!-- Sidebar Menu Placeholder -->
+    <div id="sidebar-placeholder"></div>
+
+    <script src="/common/common.js"></script>
+    <script src="/common/navigationbar.js"></script>
+    <script src="/common/menue.js"></script>
+</body>
+</html>

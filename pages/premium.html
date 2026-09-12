@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT DARK v3.0.0 — Premium Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/common/style.css">
+</head>
+<body>
+
+    <!-- PAGE LOADER -->
+    <div id="loader">
+        <div class="loader-logo">PROJECT DARK</div>
+        <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div><div id="cursor-ring"></div>
+
+    <!-- BACKGROUNDS -->
+    <div id="bg-wrap"><img id="bg-img" src="" alt="" class="fade-in"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-color-bleed" id="colorBleed"></div>
+    <div class="vignette"></div>
+
+    <!-- WATERMARK -->
+    <div id="wm">PROJECT DARK</div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="notif-toast">
+        <button class="notif-close" onclick="closeToast()">✕</button>
+        <div class="notif-title" id="nt-title">SYSTEM</div>
+        <div class="notif-body" id="nt-body"></div>
+    </div>
+
+    <!-- Header Placeholder -->
+    <div id="header-placeholder"></div>
+
+    <!-- SCROLL COUNTER -->
+    <div class="scroll-counter"><span id="scrollPct">00</span>%</div>
+
+    <!-- ═══ PREMIUM SECTION ═══ -->
+    <section id="hero">
+        <p class="hero-eyebrow">◈ Upgrades — Licenses</p>
+        <h1 class="hero-h1">PREMIUM<br><em>EDITION</em></h1>
+        
+        <div class="cards" style="margin-top:40px;">
+            <div class="card" style="grid-column: 1 / -1; cursor:pointer;" onclick="showToast('Premium', 'Premium upgrades are managed by pheonix14. Contact developer for licensing.')">
+                <div class="card-num">PRO_01</div>
+                <div class="card-icon" style="color:var(--c2);">★</div>
+                <h3 style="color:var(--c2);">Premium Features & License</h3>
+                <p style="margin-bottom:20px;">Unlock high-concurrency neural nodes, multi-account routing, zero-downtime cloud hosting, and fallback engines.</p>
+                
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px;">
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c1);">Rare Web Notifications</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">Instant push notification alerts with image highlights when a legendary, mythical, or shiny spawn is identified.</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c1);">Multi-channel Integration</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">Monitor and catch simultaneously across multiple servers, sub-channels, and private group chats.</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c1);">Custom Cooldowns</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">Fine-tune rate limit safety protections. Adjust spawn-specific catch timings and customize sleep delays.</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c1);">More than 2 Accounts</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">Manage multiple user sessions concurrently. Distribute catching threads globally.</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c2);">Hint Fallback Mode</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">If AI fails to recognize a spawn image, automatically trigger hints and execute sub-pattern solvers.</p>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1);">
+                        <strong style="color:var(--c2);">24-hour hosting</strong>
+                        <p style="font-size:11px; margin-top:5px; color:rgba(255,255,255,0.5);">Ensure zero-downtime operations. Host your selfbot daemon 24/7 on remote cloud VPS.</p>
+                    </div>
+                </div>
+
+                <div style="text-align:center; margin-top:30px; border-top:1px solid rgba(255,255,255,0.1); padding-top:20px;">
+                    <div style="font-family:'Bebas Neue'; font-size:36px;">
+                        <span style="text-decoration:line-through; color:rgba(255,255,255,0.3);">$40</span> <span style="color:var(--c2);">$20</span>
+                    </div>
+                    <p style="font-size:12px; color:rgba(255,255,255,0.5);">LITECOIN (LTC) OR POLYGON (MATIC) ONLY</p>
+                    <button class="btn" style="margin-top:15px; border-color:var(--c2); color:var(--c2);">Contact Developer (pheonix14)</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-top">
+            <div class="footer-logo">PROJECT DARK</div>
+            <ul class="footer-links">
+                <li><a href="/pages/index.html">◈ Home</a></li>
+                <li><a href="/pages/settings.html">⬡ Settings</a></li>
+                <li><a href="/pages/premium.html">◉ Premium</a></li>
+                <li><a href="/pages/about.html">◎ About</a></li>
+            </ul>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
+        </div>
+    </footer>
+
+    <!-- Sidebar Menu Placeholder -->
+    <div id="sidebar-placeholder"></div>
+
+    <script src="/common/common.js"></script>
+    <script src="/common/navigationbar.js"></script>
+    <script src="/common/menue.js"></script>
+</body>
+</html>

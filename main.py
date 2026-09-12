@@ -11,6 +11,28 @@ os.system("color")  # Enable ANSI colors on Windows
 load_dotenv()
 PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
 
+try:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    WATCHDOG_INSTALLED = True
+except ImportError:
+    WATCHDOG_INSTALLED = False
+
+try:
+    import requests
+    import discum
+    DEPENDENCIES_INSTALLED = True
+except ImportError as e:
+    DEPENDENCIES_INSTALLED = False
+    DEPENDENCY_ERROR = e
+
+# Project Modules
+if DEPENDENCIES_INSTALLED:
+    import utility_controller
+    import i_catch
+    import interaction_handler
+    import web_server
+
 def run_supervisor():
     print(r"""
     ██████╗  █████╗ ██████╗ ██╗  ██╗
@@ -23,10 +45,7 @@ def run_supervisor():
     print(f"[{PROJECT_NAME}] SYSTEM OVERRIDE INITIATED... developed by pheonix14")
     print(f"[{PROJECT_NAME}] SUPERVISOR MODE: Watchdog is actively monitoring files for seamless updates.")
     
-    try:
-        from watchdog.observers import Observer
-        from watchdog.events import FileSystemEventHandler
-    except ImportError:
+    if not WATCHDOG_INSTALLED:
         print("[!] Watchdog not installed. Please run: pip install watchdog")
         sys.exit(1)
 
@@ -75,19 +94,10 @@ def main_worker():
         pass
 
     # Dependency Health Check
-    try:
-        import requests
-        import discum
-    except ImportError as e:
-        print(f"[!] CRITICAL: Missing dependency: {e}")
+    if not DEPENDENCIES_INSTALLED:
+        print(f"[!] CRITICAL: Missing dependency: {DEPENDENCY_ERROR}")
         print("[!] Please run: pip install -r requirements.txt")
         sys.exit(1)
-
-    # Project Modules
-    import utility_controller
-    import i_catch
-    import interaction_handler
-    import web_server
 
     def start_instance(token):
         try:

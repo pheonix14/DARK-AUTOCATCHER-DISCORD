@@ -11,7 +11,7 @@ from utils import read_config
 # SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INDEX_FILE = os.path.join(BASE_DIR, "index.html")
+INDEX_FILE = os.path.join(BASE_DIR, "pages", "index.html")
 
 WS_CLIENTS = set()
 LOGS = []
@@ -21,7 +21,6 @@ _loop = None
 
 def get_sf_time_str():
     from datetime import datetime, timezone, timedelta
-    # UTC offset for San Francisco (PST/PDT). Standardizing to standard PST (UTC-8)
     now_utc = datetime.now(timezone.utc)
     sf_time = now_utc - timedelta(hours=8)
     return sf_time.strftime("%H:%M:%S")
@@ -35,7 +34,6 @@ def add_log(msg):
     if len(LOGS) > 500:
         LOGS.pop(0)
     
-    # Broadcast to websocket client connections
     _broadcast(json.dumps({"type": "log", "data": log_entry}))
 
 def add_log_structured(name, rarity, image_url="", details="", bot_source="POKETWO", status="success"):
@@ -56,11 +54,14 @@ def add_log_structured(name, rarity, image_url="", details="", bot_source="POKET
         
     _broadcast(json.dumps({"type": "structured_log", "data": log_entry}))
 
+def broadcast_engine_state(state, image_url=""):
+    """Broadcast engine state to UI (detected, catch_sent, caught)"""
+    _broadcast(json.dumps({"type": "engine_state", "data": state, "image_url": image_url}))
+
 def _broadcast(message):
     global _loop
     if _loop and WS_CLIENTS:
         try:
-            # Thread-safe async run
             asyncio.run_coroutine_threadsafe(_async_broadcast(message), _loop)
         except Exception:
             pass
@@ -79,9 +80,8 @@ async def _async_broadcast(message):
 async def _ws_handler(websocket):
     global WS_CLIENTS
     WS_CLIENTS.add(websocket)
-    add_log("Dashboard client connected. developed by pheonix14")
+    add_log("Dashboard client connected. developed by pheonix14 (v3.0.0)")
     try:
-        # Initial synchronization
         config = read_config()
         await websocket.send(json.dumps({"type": "config", "data": config}))
         await websocket.send(json.dumps({"type": "logs", "data": LOGS[-50:]}))
@@ -93,12 +93,10 @@ async def _ws_handler(websocket):
                 msg_type = msg.get("type")
 
                 if msg_type == "update_config":
-                    # Merge updates into config
                     config = read_config()
                     config.update(msg.get("data", {}))
                     write_config(config)
                     add_log(f"Config updated: {list(msg.get('data', {}).keys())}")
-                    # Broadcast immediately to ensure instant UI sync!
                     await _async_broadcast(json.dumps({"type": "config", "data": config}))
 
                 elif msg_type == "get_config":
@@ -155,9 +153,9 @@ def _start_watchdog():
                 if event.src_path.replace("\\", "/").endswith("config.txt"):
                     now = time.time()
                     if now - self._last_push < 0.5:
-                        return  # Debounce
+                        return
                     self._last_push = now
-                    time.sleep(0.1)  # Let file finish writing
+                    time.sleep(0.1)
                     config = read_config()
                     _broadcast(json.dumps({"type": "config", "data": config}))
 
@@ -168,7 +166,7 @@ def _start_watchdog():
     except ImportError:
         add_log("WARNING: watchdog not installed. Live config reload disabled.")
 
-# ── HTTP Server — Serve index.html ───────────────────────────────────────────
+# ── HTTP Server — Serve pages/ and static assets ─────────────────────────────
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -180,7 +178,7 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 with open(INDEX_FILE, "r", encoding="utf-8") as f:
                     self.wfile.write(f.read().encode("utf-8"))
             except FileNotFoundError:
-                self.wfile.write(b"<h1>index.html not found</h1>")
+                self.wfile.write(b"<h1>pages/index.html not found</h1>")
         elif self.path == "/api/logs":
             self.send_response(200)
             self.send_header("Content-type", "application/json")
@@ -194,12 +192,11 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(read_config()).encode())
         else:
-            # Serve static files from BASE_DIR
             self.directory = BASE_DIR
             super().do_GET()
 
     def log_message(self, format, *args):
-        pass  # Suppress HTTP access logs
+        pass
 
 # ── Start Everything ─────────────────────────────────────────────────────────
 

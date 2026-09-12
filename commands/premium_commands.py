@@ -14,8 +14,8 @@ def handle_premium(prefix):
         "- Captcha Guard Security Auto-Halt",
         "",
         "Cost: $20 (50% OFF - Lifetime License + 3 updates)",
-        "Payment Method: LITECOIN (LTC) ONLY",
-        "Contact developer (phoenix14) for license."
+        "Payment Method: LITECOIN (LTC) OR POLYGON (MATIC) ONLY",
+        "Contact developer (pheonix14) for license."
     ]
     text_msg = (
         "**[ PROJECT DARK - PREMIUM UPGRADES ]**\n"
@@ -25,8 +25,9 @@ def handle_premium(prefix):
         "- Hint Fallback Mode + 24/7 Hosting\n"
         "- Captcha Guard Auto-Halt Protection\n\n"
         "Cost: `$20` *(50% OFF Lifetime License)*\n"
-        "Payment: Litecoin (LTC) Only\n"
-        "Contact: `phoenix14` for license activation.\n"
+        "Payment: Litecoin (LTC) or Polygon (MATIC) Only\n"
+        "Contact: `pheonix14` for license activation.\n"
         f"Usage Hint: Type `{prefix}help` to return to all submenus."
     )
     return lines, "Premium Upgrades", text_msg
+

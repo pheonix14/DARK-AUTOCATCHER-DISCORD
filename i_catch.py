@@ -6,7 +6,7 @@ from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
 from utils import log_to_nexus
-from utility_controller import get_node_state
+from utility_controller import get_node_state, update_node_state
 
 # SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
 
@@ -18,7 +18,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
 LAST_CATCH_TIME = 0.0
 LAST_SUCCESSFUL_CATCH_TIME = 0.0
 LAST_HINT_TIME = 0.0
-COOLDOWN_PERIOD = 2.0  # Allow sequential catches very quickly
+COOLDOWN_PERIOD = 0.0  # Allow sequential catches immediately
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
 CHANNEL_IMAGES = {}
 
@@ -202,6 +202,12 @@ def on_message(resp, bot, token):
                 is_self = self_id and (self_id in content or f"<@{self_id}>" in content)
                 status_str = "success" if is_self else "failed"
                 
+                try:
+                    from web_server import broadcast_engine_state
+                    if is_self:
+                        broadcast_engine_state("caught")
+                except: pass
+                
                 img_url = CHANNEL_IMAGES.get(channel_id, "")
                 log_to_nexus(pokemon_name, rarity, token, img_url, details=level, bot_source="POKETWO", status=status_str)
             except: pass
@@ -310,6 +316,10 @@ def on_message(resp, bot, token):
                         return
 
                     print_and_log(f"[{PROJECT_NAME}] Spawn detected. Starting Hugging Face classification sequence...", "\033[96m")
+                    try:
+                        from web_server import broadcast_engine_state
+                        broadcast_engine_state("detected", url)
+                    except: pass
                     pokemon_name = classify_pokemon(url, hf_token, hf_model)
 
                     if pokemon_name:
@@ -323,6 +333,10 @@ def on_message(resp, bot, token):
                             
                             bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")
                             print_and_log(f"[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}", "\033[92m")
+                            try:
+                                from web_server import broadcast_engine_state
+                                broadcast_engine_state("catch_sent")
+                            except: pass
                             # Update cooldown timestamp
                             global LAST_CATCH_TIME
                             LAST_CATCH_TIME = time.time()
