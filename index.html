@@ -515,9 +515,11 @@
             pointer-events: auto;
         }
         .option-bubble {
-            width: 48px;
+            width: auto;
+            min-width: 48px;
+            padding: 0 16px;
             height: 48px;
-            border-radius: 50%;
+            border-radius: 24px;
             background: var(--bg-card);
             backdrop-filter: blur(20px);
             border: 1.5px solid var(--border-glass);
@@ -998,13 +1000,13 @@
             <img src="/logo.png" alt="Dragon Icon">
         </div>
         <div class="candybox-options">
-            <div class="option-bubble active" id="bubble-dashboard" onclick="navigateSection('dashboard')">I</div>
-            <div class="option-bubble" id="bubble-caught" onclick="navigateSection('caught')">II</div>
-            <div class="option-bubble" id="bubble-settings" onclick="navigateSection('settings')">III</div>
-            <div class="option-bubble" id="bubble-interact" onclick="navigateSection('interact')">IV</div>
-            <div class="option-bubble" id="bubble-logs" onclick="navigateSection('logs')">V</div>
-            <div class="option-bubble" id="bubble-premium" onclick="navigateSection('premium')">VI</div>
-            <div class="option-bubble" id="bubble-about" onclick="navigateSection('about')">VII</div>
+            <div class="option-bubble active" id="bubble-dashboard" onclick="navigateSection('dashboard')">HOME</div>
+            <div class="option-bubble" id="bubble-caught" onclick="navigateSection('caught')">CAUGHT</div>
+            <div class="option-bubble" id="bubble-settings" onclick="navigateSection('settings')">SETTINGS</div>
+            <div class="option-bubble" id="bubble-interact" onclick="navigateSection('interact')">INTERACT</div>
+            <div class="option-bubble" id="bubble-logs" onclick="navigateSection('logs')">LOGS</div>
+            <div class="option-bubble" id="bubble-premium" onclick="navigateSection('premium')">PREMIUM</div>
+            <div class="option-bubble" id="bubble-about" onclick="navigateSection('about')">ABOUT</div>
         </div>
     </div>
 
