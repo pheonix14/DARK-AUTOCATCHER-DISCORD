@@ -52,11 +52,15 @@ def query_huggingface(image_bytes, hf_token, model_id):
                     return None
             return res
         except Exception as e:
-            print(f"[{PROJECT_NAME}] HF request failed: {e}")
+            err_str = str(e)
+            if "getaddrinfo failed" in err_str or "NameResolutionError" in err_str:
+                print(f"\033[91m[{PROJECT_NAME}] DNS ERROR: Cannot reach Hugging Face. Your internet provider might be blocking it, or your DNS is failing. Try a VPN or changing DNS to 8.8.8.8.\033[0m")
+                return None
+            print(f"[{PROJECT_NAME}] HF request failed: {err_str}")
             time.sleep(2)
     return None
 
-def classify_pokemon(image_url, hf_token, model_id):
+def classify_pokemon(image_url, hf_token, primary_model):
     """Downloads spawn image and classifies it using Hugging Face."""
     try:
         response = requests.get(image_url, timeout=10)
@@ -64,15 +68,33 @@ def classify_pokemon(image_url, hf_token, model_id):
             return None
         
         img_bytes = response.content
-        res = query_huggingface(img_bytes, hf_token, model_id)
         
-        if isinstance(res, list) and len(res) > 0:
-            top_prediction = res[0]
-            pred_name = top_prediction.get("label", "").lower().strip()
-            # Clean up potential prefix formatting from classifiers (e.g. "pikachu" instead of "n012345_pikachu")
-            if "_" in pred_name:
-                pred_name = pred_name.split("_")[-1]
-            return pred_name
+        # Build model fallback list with the best Pokemon classifiers
+        models_to_try = [primary_model]
+        backup_models = [
+            "imjeffharris/pokemon_classifier",
+            "aaraki/vit-base-patch16-224-in21k-finetuned-pokemon",
+            "dima806/pokemon-image-classification",
+            "mtmptr/pokemon_classifier"
+        ]
+        for m in backup_models:
+            if m not in models_to_try:
+                models_to_try.append(m)
+                
+        for model_id in models_to_try:
+            print(f"\033[96m[{PROJECT_NAME}] Attempting classification with model: {model_id}...\033[0m")
+            res = query_huggingface(img_bytes, hf_token, model_id)
+            
+            if res is None:
+                continue  # Model failed, try the next one in the fallback list
+                
+            if isinstance(res, list) and len(res) > 0:
+                top_prediction = res[0]
+                pred_name = top_prediction.get("label", "").lower().strip()
+                # Clean up potential prefix formatting from classifiers (e.g. "pikachu" instead of "n012345_pikachu")
+                if "_" in pred_name:
+                    pred_name = pred_name.split("_")[-1]
+                return pred_name
     except Exception as e:
         print(f"[{PROJECT_NAME}] Image classification exception: {e}")
     return None
@@ -220,7 +242,7 @@ def on_message(resp, bot, token):
                         print(f"[{PROJECT_NAME}] Hugging Face API token is missing! Please configure it in Settings.")
                         return
 
-                    print(f"\033[96m[{PROJECT_NAME}] Spawn detected. Classifying via Hugging Face model: {hf_model}...\033[0m")
+                    print(f"\033[96m[{PROJECT_NAME}] Spawn detected. Starting Hugging Face classification sequence...\033[0m")
                     pokemon_name = classify_pokemon(url, hf_token, hf_model)
 
                     if pokemon_name:
