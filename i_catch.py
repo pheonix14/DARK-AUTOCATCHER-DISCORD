@@ -221,15 +221,23 @@ def on_message(resp, bot, token):
 def run_spammer(bot, token):
     import random
     import string
+    import os
     from utils import read_config
     
-    wordlist = [
-        "is anyone here?", "hello", "wow this is cool", "what pokemon are you looking for?",
-        "catching legends!", "almost level up", "keep spamming guys", "nice caught",
-        "let us spawn something", "hope it is shiny", "poketwo spawn rate is high today"
-    ]
+    wordlist = []
+    messages_file = os.path.join("messages", "spam_messages.txt")
+    if os.path.exists(messages_file):
+        with open(messages_file, "r", encoding="utf-8") as f:
+            wordlist = [line.strip() for line in f if line.strip()]
+            
+    if not wordlist:
+        wordlist = [
+            "is anyone here?", "hello", "wow this is cool", "what pokemon are you looking for?",
+            "catching legends!", "almost level up", "keep spamming guys", "nice caught",
+            "let us spawn something", "hope it is shiny", "poketwo spawn rate is high today"
+        ]
     
-    print(f"[{PROJECT_NAME}] [SPAMMER] Thread initialized.")
+    print(f"[{PROJECT_NAME}] [SPAMMER] Thread initialized. Loaded {len(wordlist)} messages.")
     while True:
         try:
             config = read_config()
@@ -238,7 +246,7 @@ def run_spammer(bot, token):
             delay = float(config.get("spam_delay", "8.0"))
             
             if spam_enabled and spam_chan:
-                msg_content = random.choice(wordlist) if random.random() > 0.3 else "".join(random.choices(string.ascii_lowercase + string.digits, k=random.randint(6, 12)))
+                msg_content = random.choice(wordlist)
                 bot.sendMessage(spam_chan, msg_content)
                 time.sleep(delay)
             else:
