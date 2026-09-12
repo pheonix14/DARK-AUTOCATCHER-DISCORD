@@ -327,14 +327,14 @@ function renderCatchesGallery() {
 
     list.forEach(c => {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'history-card';
         let rarityColor = c.rarity.toLowerCase() === 'common' ? 'rgba(255,255,255,0.4)' : 'var(--c1)';
         card.innerHTML = `
-            <div class="card-num" style="color: ${rarityColor};">${c.rarity || 'COM'}</div>
-            <div class="card-icon">◈</div>
+            <div class="date-badge">${c.time.split(' ')[0]}</div>
+            <div class="rarity-badge" style="color: ${rarityColor}; border: 1px solid ${rarityColor};">${c.rarity || 'COM'}</div>
             <div class="card-img-wrap"><img src="${c.image_url || '/logo.png'}" alt="${c.name}" onerror="this.src='/logo.png'"></div>
             <h3>${c.name}</h3>
-            <p>Level ${c.details || '?'} — ${c.time}</p>
+            <p>Level ${c.details || '?'}</p>
         `;
         container.appendChild(card);
     });

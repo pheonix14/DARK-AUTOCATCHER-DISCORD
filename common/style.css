@@ -755,6 +755,79 @@ section {
     filter: drop-shadow(0 0 10px var(--c1));
 }
 
+/* History Grid specific layout */
+.history-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 60px;
+}
+.history-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    backdrop-filter: blur(8px);
+}
+.history-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-4px);
+}
+.history-card .card-img-wrap {
+    width: 140px;
+    height: 140px;
+    margin: 16px auto;
+}
+.history-card .card-img-wrap img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+}
+.history-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #fff;
+    margin-bottom: 6px;
+}
+.history-card p {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.6);
+}
+.history-card .rarity-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+}
+.history-card .date-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+}
+
 /* ─── MARQUEE ─── */
 .marquee-wrap {
     position: relative;
