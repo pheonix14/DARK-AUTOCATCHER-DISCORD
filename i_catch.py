@@ -300,8 +300,8 @@ def on_message(resp, bot, token):
                 title = embed.get("title", "").lower()
                 desc = embed.get("description", "").lower()
                 
-                # Detect Poketwo spawn embeds even if URL format varies
-                is_spawn_embed = "wild pokémon has appeared" in title or "wild pokémon has appeared" in desc or "guess the pokémon" in title or "guess the pokémon" in desc or (url and ("pokemon" in url.lower() or "poketwo" in url.lower()))
+                # Strictly detect Pokétwo spawn embeds to avoid false positives (like Pokédex or shop images)
+                is_spawn_embed = "wild pokémon has appeared" in title or "guess the pokémon" in desc
                 
                 if is_spawn_embed and url:
                     CHANNEL_IMAGES[channel_id] = url
