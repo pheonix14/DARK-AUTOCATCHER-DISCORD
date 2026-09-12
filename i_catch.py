@@ -342,6 +342,11 @@ def on_message(resp, bot, token):
                         def delayed_catch(p_name, c_id):
                             catch_delay = 2.0
                             print_and_log(f"[{PROJECT_NAME}] [AI] Identified: {p_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...", "\033[92m")
+                            try:
+                                from web_server import broadcast_engine_state
+                                broadcast_engine_state("identified", p_name)
+                            except: pass
+                            
                             time.sleep(catch_delay)
                             
                             bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")

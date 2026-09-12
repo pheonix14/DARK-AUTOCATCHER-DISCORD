@@ -168,11 +168,28 @@ function handleEngineState(state, imageUrl) {
     if (!imgEl) return;
 
     if (state === 'detected') {
-        if (imageUrl) {
-            imgEl.src = imageUrl;
+        // Hide the raw image so we only show the clean pokemon later
+        imgEl.style.display = 'none';
+    } else if (state === 'identified') {
+        let name = imageUrl; // payload is the pokemon name
+        if (name) {
+            let formattedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            // Handle forms for pokemon showdown
+            if (formattedName.includes('alolan')) formattedName = formattedName.replace('alolan', '') + 'alola';
+            if (formattedName.includes('galarian')) formattedName = formattedName.replace('galarian', '') + 'galar';
+            if (formattedName.includes('hisuian')) formattedName = formattedName.replace('hisuian', '') + 'hisui';
+            if (formattedName.includes('paldean')) formattedName = formattedName.replace('paldean', '') + 'paldea';
+
+            imgEl.src = `https://play.pokemonshowdown.com/sprites/ani/${formattedName}.gif`;
             imgEl.style.display = 'block';
+            imgEl.style.filter = 'drop-shadow(0 0 30px var(--c2))';
+            
+            imgEl.onerror = () => {
+                imgEl.src = `https://play.pokemonshowdown.com/sprites/gen5/${formattedName}.png`;
+            };
         }
-        imgEl.style.filter = 'drop-shadow(0 0 30px var(--c2))';
+    } else if (state === 'catch_sent') {
+        imgEl.style.filter = 'drop-shadow(0 0 30px var(--c1))';
     } else if (state === 'caught') {
         imgEl.style.filter = 'drop-shadow(0 0 40px #00ff00)';
     } else if (state === 'reset') {
