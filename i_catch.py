@@ -22,6 +22,18 @@ COOLDOWN_PERIOD = 2.0  # Allow sequential catches very quickly
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
 CHANNEL_IMAGES = {}
 
+def print_and_log(msg, color_code=""):
+    ui_msg = msg
+    if color_code:
+        print(f"{color_code}{msg}\033[0m")
+    else:
+        print(msg)
+    try:
+        from web_server import add_log
+        add_log(ui_msg)
+    except:
+        pass
+
 
 SPECIAL_SPECIES = ["mew", "celebi", "jirachi", "deoxys", "phione", "manaphy", "darkrai", "shaymin", "arceus", "victini", "keldeo", "meloetta", "genesect", "diancie", "hoopa", "volcanion", "magearna", "marshadow", "zeraora", "meltan", "melmetal", "zarude", "calyrex", "articuno", "zapdos", "moltres", "mewtwo", "raikou", "entei", "suicune", "lugia", "ho-oh", "regirock", "regice", "registeel", "latias", "latios", "kyogre", "groudon", "rayquaza", "uxie", "mesprit", "azelf", "dialga", "palkia", "heatran", "regigigas", "giratina", "cresselia", "cobalion", "terrakion", "virizion", "tornadus", "thundurus", "reshiram", "zekrom", "landorus", "kyurem", "xerneas", "yveltal", "zygarde", "type: null", "silvally", "tapu koko", "tapu lele", "tapu bulu", "tapu fini", "cosmog", "cosmoem", "solgaleo", "lunala", "nihilego", "buzzwole", "pheromosa", "xurkitree", "celesteela", "kartana", "guzzlord", "necrozma", "poipole", "naganadel", "stakataka", "blacephalon", "zamazenta", "zacian", "eternatus", "kubfu", "urshifu", "regieleki", "regidrago", "glastrier", "spectrier", "enamorus"]
 
@@ -181,6 +193,7 @@ def on_message(resp, bot, token):
             LAST_SUCCESSFUL_CATCH_TIME = time.time()
             try:
                 name_part = content.split("caught a level")[1].split("!")[0].strip()
+                level = name_part.split()[0] if name_part.split()[0].isdigit() else "?"
                 pokemon_name = " ".join(name_part.split()[1:]) if name_part.split()[0].isdigit() else name_part
                 rarity = get_rarity(pokemon_name)
                 
@@ -190,25 +203,24 @@ def on_message(resp, bot, token):
                 status_str = "success" if is_self else "failed"
                 
                 img_url = CHANNEL_IMAGES.get(channel_id, "")
-                log_to_nexus(pokemon_name, rarity, token, img_url, content, bot_source="POKETWO", status=status_str)
+                log_to_nexus(pokemon_name, rarity, token, img_url, details=level, bot_source="POKETWO", status=status_str)
             except: pass
 
         # Wrong Pokemon Guessed
         if author_id == POKETWO_ID and "that is the wrong" in content.lower():
-            print(f"\033[93m[{PROJECT_NAME}] Wrong guess detected! Sending hint after a short delay...\033[0m")
+            print_and_log(f"[{PROJECT_NAME}] Wrong guess detected! Sending hint after a short delay...", "\033[93m")
             import threading
             def send_delayed_hint():
                 global LAST_HINT_TIME
                 time.sleep(2.5)
                 LAST_HINT_TIME = time.time()
-                prefix = get_node_state(token).get("prefix", ".")
-                bot.sendMessage(channel_id, f"{prefix}h")
+                bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
             threading.Thread(target=send_delayed_hint, daemon=True).start()
 
 
         # Hint Solver
         if author_id == POKETWO_ID and "the pokémon is" in content.lower():
-            print(f"\033[93m[{PROJECT_NAME}] Hint received: {content}\033[0m")
+            print_and_log(f"[{PROJECT_NAME}] Hint received: {content}", "\033[93m")
             try:
                 # E.g. "The pokémon is K\_ \_ \_ia." or "The pokémon is K___ia."
                 hint_str = content.lower().split("is ")[1].replace(".", "").strip()
@@ -226,14 +238,13 @@ def on_message(resp, bot, token):
                 if matches:
                     import random
                     guess = random.choice(matches)
-                    print(f"\033[92m[{PROJECT_NAME}] [AI-HINT] Solved hint as: {guess}. Sending catch...\033[0m")
+                    print_and_log(f"[{PROJECT_NAME}] [AI-HINT] Solved hint as: {guess}. Sending catch...", "\033[92m")
                     global LAST_CATCH_TIME
                     LAST_CATCH_TIME = time.time()
                     import threading
                     def send_hint_catch():
                         time.sleep(2.0)
-                        prefix = get_node_state(token).get("prefix", ".")
-                        bot.sendMessage(channel_id, f"{prefix}c {guess}")
+                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {guess}")
                     threading.Thread(target=send_hint_catch, daemon=True).start()
                 else:
                     print(f"\033[91m[{PROJECT_NAME}] Could not solve hint for pattern: {hint_clean}\033[0m")
@@ -291,14 +302,6 @@ def on_message(resp, bot, token):
                     if not state.get("catch_enabled", True):
                         return
 
-                    # COOLDOWN CHECK: Skip if a catch happened in the last 2 minutes
-                    curr_time = time.time()
-                    time_passed = curr_time - LAST_CATCH_TIME
-                    if time_passed < COOLDOWN_PERIOD:
-                        wait_remaining = int(COOLDOWN_PERIOD - time_passed)
-                        print(f"[{PROJECT_NAME}] Cooldown active: Ignoring spawn ({wait_remaining}s remaining).")
-                        return
-
                     hf_token = state.get("huggingface_token", "").strip()
                     hf_model = state.get("huggingface_model", "imjeffharris/pokemon_classifier").strip()
                     
@@ -306,7 +309,7 @@ def on_message(resp, bot, token):
                         print(f"[{PROJECT_NAME}] Hugging Face API token is missing! Please configure it in Settings.")
                         return
 
-                    print(f"\033[96m[{PROJECT_NAME}] Spawn detected. Starting Hugging Face classification sequence...\033[0m")
+                    print_and_log(f"[{PROJECT_NAME}] Spawn detected. Starting Hugging Face classification sequence...", "\033[96m")
                     pokemon_name = classify_pokemon(url, hf_token, hf_model)
 
                     if pokemon_name:
@@ -315,12 +318,11 @@ def on_message(resp, bot, token):
                         import threading
                         def delayed_catch(p_name, c_id):
                             catch_delay = 2.0
-                            print(f"\033[92m[{PROJECT_NAME}] [AI] Identified: {p_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...\033[0m")
+                            print_and_log(f"[{PROJECT_NAME}] [AI] Identified: {p_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...", "\033[92m")
                             time.sleep(catch_delay)
                             
-                            prefix = get_node_state(token).get("prefix", ".")
-                            bot.sendMessage(c_id, f"{prefix}c {p_name}")
-                            print(f"\033[92m[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}\033[0m")
+                            bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")
+                            print_and_log(f"[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}", "\033[92m")
                             # Update cooldown timestamp
                             global LAST_CATCH_TIME
                             LAST_CATCH_TIME = time.time()
@@ -329,16 +331,15 @@ def on_message(resp, bot, token):
                                 global LAST_HINT_TIME
                                 time.sleep(10.0)
                                 if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
-                                    print(f"\033[93m[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...\033[0m")
+                                    print_and_log(f"[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...", "\033[93m")
                                     LAST_HINT_TIME = time.time()
-                                    bot.sendMessage(c_id, f"{prefix}h")
+                                    bot.sendMessage(c_id, f"<@{POKETWO_ID}> h")
                             threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
                             
                         threading.Thread(target=delayed_catch, args=(pokemon_name, channel_id), daemon=True).start()
                     else:
-                        print(f"\033[93m[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.\033[0m")
-                        prefix = get_node_state(token).get("prefix", ".")
-                        bot.sendMessage(channel_id, f"{prefix}h")
+                        print_and_log(f"[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.", "\033[93m")
+                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
 
         # Immediate button click catching
         if author_id == POKETWO_ID and msg.get("components"):

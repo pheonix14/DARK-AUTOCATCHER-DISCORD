@@ -1229,6 +1229,19 @@
                 fDetails.textContent = `${name.toUpperCase()} (${rarity.toUpperCase()}) — DISPATCHING IN 3s`;
             } else if (log.msg.includes("CATCH sent")) {
                 fDetails.textContent = 'Command Transmitted. Awaiting Capture confirmation...';
+            } else if (log.msg.includes("Hint received:")) {
+                n1.className = 'flow-node-wrapper active-detect';
+                n2.className = 'flow-node-wrapper';
+                n3.className = 'flow-node-wrapper';
+                fBar.style.width = '0%';
+                fDetails.textContent = 'Processing Pokétwo Hint...';
+            } else if (log.msg.includes("Solved hint as:")) {
+                let name = log.msg.split("Solved hint as:")[1].split(".")[0].trim();
+                n1.className = 'flow-node-wrapper active-detect';
+                n2.className = 'flow-node-wrapper active-sent';
+                n3.className = 'flow-node-wrapper';
+                fBar.style.width = '50%';
+                fDetails.textContent = `${name.toUpperCase()} (HINT) — DISPATCHING CATCH`;
             }
         }
 
@@ -1296,6 +1309,7 @@
                     <div class="pokemon-card-name">${c.name}</div>
                     <img src="${c.image_url || '/logo.png'}" alt="${c.name}" onerror="this.src='/logo.png'">
                     <div class="pokemon-card-rarity ${c.rarity.toLowerCase()}">${c.rarity}</div>
+                    <div class="pokemon-card-level" style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 4px;">Level ${c.details || '?'}</div>
                     <div class="pokemon-card-time">${c.time}</div>
                 `;
                 container.appendChild(card);
