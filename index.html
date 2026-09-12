@@ -473,75 +473,78 @@
             margin-top: 0.3rem;
         }
 
-        /* Floating Candybox Numerals Menu */
-        .candybox-menu {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 1000;
-        }
-        .candybox-trigger {
-            width: 56px;
-            height: 56px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-        }
-        .candybox-trigger img {
-            width: 48px; height: 48px;
-            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.6));
-            transition: var(--transition);
-        }
-        .candybox-trigger:hover {
-            transform: rotate(45deg) scale(1.08);
-        }
-        .candybox-options {
-            position: absolute;
-            bottom: 70px;
-            right: 4px;
+        /* Hamburger Icon & Left Sidebar */
+        .burger-menu-icon {
+            width: 32px;
+            height: 24px;
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
-            opacity: 0;
-            transform: translateY(20px) scale(0.9);
-            pointer-events: none;
-            transition: var(--transition);
-        }
-        .candybox-menu.open .candybox-options {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            pointer-events: auto;
-        }
-        .option-bubble {
-            width: auto;
-            min-width: 48px;
-            padding: 0 16px;
-            height: 48px;
-            border-radius: 24px;
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1.5px solid var(--border-glass);
+            justify-content: space-between;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-primary);
-            box-shadow: var(--glass-shadow);
-            transition: var(--transition);
-            font-weight: 700;
-            font-size: 0.9rem;
+            z-index: 1001;
         }
-        .option-bubble:hover {
+        .burger-menu-icon div {
+            width: 100%;
+            height: 3px;
+            background-color: var(--primary);
+            border-radius: 2px;
+            transition: var(--transition);
+        }
+        
+        .left-sidebar-menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 260px;
+            height: 100vh;
+            background: rgba(6, 6, 12, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid var(--border-glass);
+            z-index: 1000;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            padding: 5rem 2rem 2rem 2rem;
+            gap: 1rem;
+            box-shadow: var(--glass-shadow);
+        }
+        .left-sidebar-menu.open {
+            left: 0;
+        }
+        .sidebar-menu-item {
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(25, 25, 38, 0.4);
+            border: 1px solid var(--border-glass);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: left;
+        }
+        .sidebar-menu-item:hover {
             border-color: var(--primary);
             color: var(--primary);
-            transform: scale(1.08);
+            background: rgba(35, 35, 55, 0.6);
         }
-        .option-bubble.active {
+        .sidebar-menu-item.active {
             border-color: var(--accent);
             color: var(--accent);
             box-shadow: var(--glow-purple);
+        }
+        .sidebar-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+        .sidebar-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         /* Page animations */
@@ -583,12 +586,17 @@
     <div class="app-container">
         <!-- Header Bar -->
         <header>
-            <div class="brand-section">
-                <div class="brand-title">
-                    <img src="/logo.png" alt="Dragon Logo">
-                    <span class="gradient-text">PROJECT DARK</span>
+            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                <div class="burger-menu-icon" onclick="toggleSidebarMenu()">
+                    <div></div><div></div><div></div>
                 </div>
-                <p class="brand-subtitle">System Control Panel</p>
+                <div class="brand-section">
+                    <div class="brand-title">
+                        <img src="/logo.png" alt="Dragon Logo">
+                        <span class="gradient-text">PROJECT DARK</span>
+                    </div>
+                    <p class="brand-subtitle">System Control Panel</p>
+                </div>
             </div>
             <div class="status-badge" id="net-badge">
                 <span class="pulse-dot"></span>
@@ -650,21 +658,7 @@
                     </div>
                 </div>
 
-                <!-- Input configs -->
-                <div class="glass-panel">
-                    <div class="form-group">
-                        <label>Discord Credentials Token</label>
-                        <input type="text" class="form-control" id="token" placeholder="Authorization Token">
-                    </div>
-                    <div class="form-group">
-                        <label>Hugging Face API Token</label>
-                        <input type="text" class="form-control" id="huggingface_token" placeholder="hf_...">
-                    </div>
-                    <div class="form-group">
-                        <label>Classification Model ID</label>
-                        <input type="text" class="form-control" id="huggingface_model" placeholder="imjeffharris/pokemon_classifier">
-                    </div>
-                </div>
+                <!-- Input configs removed from sidebar to prevent duplicate ID conflicts (Settings tab is primary) -->
             </div>
 
             <!-- Main Nav Content Slide pages -->
@@ -994,20 +988,16 @@
         </div>
     </div>
 
-    <!-- Candybox floating navigation menu -->
-    <div class="candybox-menu" id="candybox">
-        <div class="candybox-trigger" onclick="toggleCandybox()">
-            <img src="/logo.png" alt="Dragon Icon">
-        </div>
-        <div class="candybox-options">
-            <div class="option-bubble active" id="bubble-dashboard" onclick="navigateSection('dashboard')">HOME</div>
-            <div class="option-bubble" id="bubble-caught" onclick="navigateSection('caught')">CAUGHT</div>
-            <div class="option-bubble" id="bubble-settings" onclick="navigateSection('settings')">SETTINGS</div>
-            <div class="option-bubble" id="bubble-interact" onclick="navigateSection('interact')">INTERACT</div>
-            <div class="option-bubble" id="bubble-logs" onclick="navigateSection('logs')">LOGS</div>
-            <div class="option-bubble" id="bubble-premium" onclick="navigateSection('premium')">PREMIUM</div>
-            <div class="option-bubble" id="bubble-about" onclick="navigateSection('about')">ABOUT</div>
-        </div>
+    <!-- Left Sidebar Navigation Menu -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebarMenu()"></div>
+    <div class="left-sidebar-menu" id="leftSidebar">
+        <div class="sidebar-menu-item active" id="bubble-dashboard" onclick="navigateSection('dashboard')">HOME</div>
+        <div class="sidebar-menu-item" id="bubble-caught" onclick="navigateSection('caught')">CAUGHT</div>
+        <div class="sidebar-menu-item" id="bubble-settings" onclick="navigateSection('settings')">SETTINGS</div>
+        <div class="sidebar-menu-item" id="bubble-interact" onclick="navigateSection('interact')">INTERACT</div>
+        <div class="sidebar-menu-item" id="bubble-logs" onclick="navigateSection('logs')">LOGS</div>
+        <div class="sidebar-menu-item" id="bubble-premium" onclick="navigateSection('premium')">PREMIUM</div>
+        <div class="sidebar-menu-item" id="bubble-about" onclick="navigateSection('about')">ABOUT</div>
     </div>
 
     <!-- Notification Toast -->
@@ -1332,9 +1322,10 @@
         }
 
         // Toggles & Actions
-        function toggleCandybox() {
+        function toggleSidebarMenu() {
             playSound('click');
-            document.getElementById('candybox').classList.toggle('open');
+            document.getElementById('leftSidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
         }
 
         function navigateSection(secId) {
@@ -1344,10 +1335,14 @@
             });
             document.getElementById('sec-' + secId).classList.add('active');
 
-            document.querySelectorAll('.option-bubble').forEach(b => {
+            document.querySelectorAll('.sidebar-menu-item').forEach(b => {
                 b.classList.remove('active');
             });
             document.getElementById('bubble-' + secId).classList.add('active');
+            
+            // Close sidebar automatically on mobile
+            document.getElementById('leftSidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('open');
         }
 
         function toggleConfigGuide() {
