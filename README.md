@@ -27,14 +27,58 @@
 
 ---
 
-## 📸 DASHBOARD SCREENSHOTS
+## 📸 DASHBOARD SCREENSHOTS & PAGE GUIDE
+
+PROJECT DARK v4 features a responsive 8-page Web Dashboard. Each page is crafted with glassmorphic visuals, smooth typography, and real-time WebSocket connectivity:
 
 <div align="center">
-  <img src="https://via.placeholder.com/800x450.png?text=Home+Dashboard" alt="Home Dashboard" width="48%">
-  <img src="https://via.placeholder.com/800x450.png?text=Real-Time+Logs" alt="Real-Time Logs" width="48%">
-  <br>
-  <img src="https://via.placeholder.com/800x450.png?text=Caught+History+Gallery" alt="Caught History Gallery" width="48%">
-  <img src="https://via.placeholder.com/800x450.png?text=Settings+Panel" alt="Settings Panel" width="48%">
+
+### 1. 🏠 Home Control Center (`pages/index.html`)
+*Live spawner status, instant ONNX autocatcher toggle, real-time counters, and quick metrics.*
+<img src="assets/dashboard_home.png" alt="Home Dashboard" width="90%">
+
+<br><br>
+
+### 2. ⚡ Live Interaction Console (`pages/interact.html`)
+*Execute bot commands, trigger manual spawns, inspect responses, and run interactive tests.*
+<img src="assets/interact_console.png" alt="Interaction Console" width="90%">
+
+<br><br>
+
+### 3. 📜 Real-Time Terminal Logs (`pages/logs.html`)
+*Stream real-time terminal output, WebSocket events, AI vision classifications, and debug messages.*
+<img src="assets/terminal_logs.png" alt="Terminal Logs" width="90%">
+
+<br><br>
+
+### 4. 🖼️ Acquisitions Gallery & History (`pages/history.html`)
+*Browse your caught Pokémon gallery with sprite cards, exact timestamp logs, and IV metrics.*
+<img src="assets/catch_history.png" alt="Catch History" width="90%">
+
+<br><br>
+
+### 5. 👥 Multi-Account Profiles (`pages/profiles.html`)
+*Manage and hot-swap between multiple Discord user accounts and custom target profile configs.*
+<img src="assets/account_profiles.png" alt="Account Profiles" width="90%">
+
+<br><br>
+
+### 6. ⚙️ System Settings & AI Config (`pages/settings.html`)
+*Tune catch delays, configure webhook pings, tweak HuggingFace / local ONNX models, and spam timers.*
+<img src="assets/system_settings.png" alt="System Settings" width="90%">
+
+<br><br>
+
+### 7. 💎 Dark Pro & Premium Hub (`pages/premium.html`)
+*Unlock 24/7 cloud hosting templates, captcha auto-pause indicators, multi-channel support, and priority builds.*
+<img src="assets/premium_upgrade.png" alt="Premium Upgrade" width="90%">
+
+<br><br>
+
+### 8. ℹ️ System Architecture & Features A-Z (`pages/about.html`)
+*Complete breakdown of system architecture, zero-cost cloud deployment, memory footprint specs, and A-Z features.*
+<img src="assets/features_about.png" alt="Features & About" width="90%">
+
 </div>
 
 ---
@@ -70,8 +114,7 @@ PROJECT DARK isn't just an autocatcher—it's a **command center**. We moved awa
 | **Autocatching AI** | Ultra-fast Local ONNX Vision | Ultra-fast Local ONNX Vision |
 | **Alerts & Pings** | Browser alert alerts | Instant Discord webhook alerts |
 | **24/7 Cloud Hosting** | 1-Click Render.com / Docker | 1-Click Render.com / Docker |
-| **Captcha Security** | ❌ None | ✅ **Captcha Indicator & Auto Pause** |
-| **Multi-channel** | ❌ Single Channel | ✅ **Multi-Channel Integration** |
+| **Multi-channel** | ⚡ Limited (Up to 2 Channels nd more) | ✅ **Multi-Channel (Up to 10 Channels)** |
 | **Stealth Mode** | ❌ Standard Speed | ✅ **Human-like Cooldowns** |
 | **Custom Features** | ❌ None | ✅ **Custom Requests Built For You** |
 
