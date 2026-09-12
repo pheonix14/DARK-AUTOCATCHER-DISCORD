@@ -16,6 +16,8 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
 
 # Global cooldown tracker
 LAST_CATCH_TIME = 0.0
+LAST_SUCCESSFUL_CATCH_TIME = 0.0
+LAST_HINT_TIME = 0.0
 COOLDOWN_PERIOD = 120.0  # 2 minutes cooldown
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
 
@@ -102,7 +104,7 @@ def try_click_catch_button(bot, msg, channel_id):
     return False
 
 def on_message(resp, bot, token):
-    global LAST_CATCH_TIME, ACTIVE_CONFIRMATIONS
+    global LAST_CATCH_TIME, LAST_SUCCESSFUL_CATCH_TIME, LAST_HINT_TIME, ACTIVE_CONFIRMATIONS
     
     if resp.event.message:
         msg = resp.parsed.auto()
@@ -145,6 +147,7 @@ def on_message(resp, bot, token):
 
         # Detection of Catch Confirmation
         if author_id == POKETWO_ID and "congratulations" in content.lower():
+            LAST_SUCCESSFUL_CATCH_TIME = time.time()
             try:
                 name_part = content.split("caught a level")[1].split("!")[0].strip()
                 pokemon_name = " ".join(name_part.split()[1:]) if name_part.split()[0].isdigit() else name_part
@@ -158,6 +161,33 @@ def on_message(resp, bot, token):
                 img_url = CHANNEL_IMAGES.get(channel_id, "")
                 log_to_nexus(pokemon_name, rarity, token, img_url, content, bot_source="POKETWO", status=status_str)
             except: pass
+
+        # Wrong Pokemon Guessed
+        if author_id == POKETWO_ID and "that is the wrong" in content.lower():
+            print(f"\033[93m[{PROJECT_NAME}] Wrong guess detected! Sending hint after a short delay...\033[0m")
+            import threading
+            def send_delayed_hint():
+                global LAST_HINT_TIME
+                time.sleep(2.5)
+                LAST_HINT_TIME = time.time()
+                bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
+            threading.Thread(target=send_delayed_hint, daemon=True).start()
+
+        # Fled Pokemon Tracker
+        if author_id == POKETWO_ID and "fled" in content.lower() and "the wild" in content.lower():
+            try:
+                fled_name = content.split("the wild ")[1].split(" fled")[0].strip()
+                fled_name = fled_name.replace("*", "").replace("_", "").replace("\\", "").strip()
+                if fled_name:
+                    with open("pokemon.txt", "r", encoding="utf-8") as f:
+                        all_pokes = f.read().splitlines()
+                    
+                    if fled_name.lower() not in [p.lower() for p in all_pokes]:
+                        print(f"\033[93m[{PROJECT_NAME}] New Pokemon discovered from flee message: {fled_name}. Adding to database.\033[0m")
+                        with open("pokemon.txt", "a", encoding="utf-8") as f:
+                            f.write(f"\n{fled_name}")
+            except Exception as e:
+                pass
 
         # AI Image Catching Logic
         embeds = msg.get("embeds", [])
@@ -190,22 +220,32 @@ def on_message(resp, bot, token):
                         print(f"[{PROJECT_NAME}] Hugging Face API token is missing! Please configure it in Settings.")
                         return
 
-                    print(f"[{PROJECT_NAME}] Spawn detected. Classifying via Hugging Face model: {hf_model}...")
+                    print(f"\033[96m[{PROJECT_NAME}] Spawn detected. Classifying via Hugging Face model: {hf_model}...\033[0m")
                     pokemon_name = classify_pokemon(url, hf_token, hf_model)
 
                     if pokemon_name:
                         rarity = get_rarity(pokemon_name)
                         
                         catch_delay = 3.0
-                        print(f"[{PROJECT_NAME}] [AI] Identified: {pokemon_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...")
+                        print(f"\033[92m[{PROJECT_NAME}] [AI] Identified: {pokemon_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...\033[0m")
                         time.sleep(catch_delay)
                         
                         bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {pokemon_name}")
-                        print(f"[{PROJECT_NAME}] [AI] CATCH sent for: {pokemon_name}")
+                        print(f"\033[92m[{PROJECT_NAME}] [AI] CATCH sent for: {pokemon_name}\033[0m")
                         # Update cooldown timestamp to block future catches for 120 seconds
                         LAST_CATCH_TIME = time.time()
+                        
+                        import threading
+                        def timeout_hint(spawn_time):
+                            global LAST_HINT_TIME
+                            time.sleep(10.0)
+                            if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
+                                print(f"\033[93m[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...\033[0m")
+                                LAST_HINT_TIME = time.time()
+                                bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
+                        threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
                     else:
-                        print(f"[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.")
+                        print(f"\033[93m[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.\033[0m")
                         bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
 
         # Immediate button click catching
@@ -237,7 +277,7 @@ def run_spammer(bot, token):
             "let us spawn something", "hope it is shiny", "poketwo spawn rate is high today"
         ]
     
-    print(f"[{PROJECT_NAME}] [SPAMMER] Thread initialized. Loaded {len(wordlist)} messages.")
+    print(f"\033[95m[{PROJECT_NAME}] [SPAMMER] Thread initialized. Loaded {len(wordlist)} messages.\033[0m")
     while True:
         try:
             config = read_config()
@@ -255,7 +295,7 @@ def run_spammer(bot, token):
             time.sleep(5)
 
 def setup(bot, token=None):
-    print(f"[{PROJECT_NAME}] I_CATCH MODULE ARMED (HUGGING FACE ONLY).")
+    print(f"\033[96m[{PROJECT_NAME}] I_CATCH MODULE ARMED (HUGGING FACE ONLY).\033[0m")
     bot.gateway.command({"function": lambda resp: on_message(resp, bot, token), "name": "MESSAGE_CREATE"})
     
     import threading

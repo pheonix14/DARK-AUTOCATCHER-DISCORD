@@ -5,6 +5,8 @@ import sys
 import subprocess
 from dotenv import load_dotenv
 
+os.system("color")  # Enable ANSI colors on Windows
+
 # Load environment variables
 load_dotenv()
 PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
