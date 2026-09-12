@@ -217,6 +217,44 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(read_config()).encode())
+        elif self.path.startswith("/api/discord/user?id="):
+            user_id = self.path.split("=")[1]
+            token = read_config().get("token", "")
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                import requests
+                r = requests.get(f"https://discord.com/api/v9/users/{user_id}", headers={"Authorization": token}, timeout=5)
+                self.wfile.write(r.content)
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+        elif self.path == "/api/discord/guilds":
+            token = read_config().get("token", "")
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                import requests
+                r = requests.get("https://discord.com/api/v9/users/@me/guilds", headers={"Authorization": token}, timeout=5)
+                self.wfile.write(r.content)
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+        elif self.path.startswith("/api/discord/channels?guild_id="):
+            guild_id = self.path.split("=")[1]
+            token = read_config().get("token", "")
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                import requests
+                r = requests.get(f"https://discord.com/api/v9/guilds/{guild_id}/channels", headers={"Authorization": token}, timeout=5)
+                self.wfile.write(r.content)
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
             self.directory = BASE_DIR
             super().do_GET()

@@ -53,12 +53,10 @@
                 <h3>System Parameters</h3>
                 <p style="margin-bottom:20px;">Toggles and engine parameters.</p>
                 
-                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <div>
-                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Restrict Commands</span>
-                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Ignore other accounts</span>
-                    </div>
-                    <div class="toggle-switch" id="restrictSwitch" onclick="toggleRestrictSelf()"></div>
+                <div class="form-group" style="margin-top:20px;">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Allowed User IDs (Max 3, Comma-separated)</label>
+                    <input type="text" id="listener_id" placeholder="self, 123456789" onblur="loadUserProfiles()">
+                    <div id="user-profiles-container" style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;"></div>
                 </div>
 
                 <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -75,8 +73,13 @@
                 </div>
                 
                 <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Listening Channel</label>
-                    <input type="text" id="pokemon_channel" placeholder="Channel ID">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Default Channels / Servers</label>
+                    <input type="hidden" id="pokemon_channel">
+                    <button class="btn" style="width:100%; border-color:rgba(255,255,255,0.2); font-size:12px; padding:10px;" onclick="loadDiscordServers()">Fetch Discord Servers</button>
+                    <div id="discord-servers-container" style="margin-top:10px; max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:4px; display:none; flex-direction:column; gap:10px;">
+                        <!-- Fetched servers and channels go here -->
+                    </div>
+                    <div style="font-family:'Space Grotesk'; font-size:10px; color:rgba(255,255,255,0.5); margin-top:5px;">Max 5 servers and 10 channels. Checked items will be saved.</div>
                 </div>
             </div>
 

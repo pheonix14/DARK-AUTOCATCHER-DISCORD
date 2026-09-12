@@ -149,11 +149,14 @@ def on_message(resp, bot, token):
         channel_id = msg.get("channel_id")
         
         state = get_node_state(token)
-        target_channel = state.get("pokemon_channel", "").strip()
+        target_channels_str = state.get("pokemon_channel", "").strip()
+        guild_id = msg.get("guild_id")
         
-        # Enforce listening strictly to the configured Pokemon Channel
-        if target_channel and channel_id != target_channel:
-            return
+        # Enforce listening strictly to the configured Pokemon Channels or Guilds
+        if target_channels_str:
+            allowed = [c.strip() for c in target_channels_str.split(",") if c.strip()]
+            if channel_id not in allowed and str(guild_id) not in allowed:
+                return
         
         # Captcha Security Failsafe Scanner
         if author_id == POKETWO_ID and ("verify" in content.lower() or "captcha" in content.lower() or ("http" in content.lower() and "link" in content.lower())):

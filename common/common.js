@@ -195,10 +195,8 @@ function renderConfigToInputs() {
     setVal('spam_channel_id', localConfig.spam_channel_id);
     setVal('spam_delay', localConfig.spam_delay || '45.0');
     
-    // Toggle switches
-    const isSelf = localConfig.listener_id === 'self';
-    const restrictSwitch = document.getElementById('restrictSwitch');
-    if (restrictSwitch) restrictSwitch.className = 'toggle-switch' + (isSelf ? ' active' : '');
+    setVal('listener_id', localConfig.listener_id || 'self');
+    loadUserProfiles();
     
     notificationsEnabled = localConfig.notifications_enabled === 'true';
     const notifySwitch = document.getElementById('notifySwitch');
@@ -293,10 +291,13 @@ function handleNewCaptureLog(log) {
     showToast(log.status === 'success' ? 'SECURED' : 'FAILED', `${log.name} (${log.rarity})`);
 
     if (notificationsEnabled && log.status === 'success') {
-        new Notification('Acquisition Success', {
-            body: `Successfully caught ${log.name} (${log.rarity})`,
-            icon: log.image_url || '/logo.png'
-        });
+        const r = log.rarity.toLowerCase();
+        if (r === 'rare' || r === 'legendary' || r === 'shiny') {
+            new Notification('PROJECT DARK', {
+                body: `Successfully caught ${log.name} (${log.rarity})`,
+                icon: log.image_url || '/logo.png'
+            });
+        }
     }
 
     if (fBar && fDetails && n1 && n2 && n3) {
@@ -426,12 +427,208 @@ function saveCredentialsSettings() {
     showToast('CREDENTIALS', 'Settings synchronized successfully.');
 }
 
-function toggleRestrictSelf() {
-    const isSelf = localConfig.listener_id === 'self';
-    localConfig.listener_id = isSelf ? '' : 'self';
-    const switchEl = document.getElementById('restrictSwitch');
-    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.listener_id === 'self' ? ' active' : '');
-    playSound(localConfig.listener_id === 'self' ? 'toggle-on' : 'toggle-off');
+function toggleNotifications() {
+    if (Notification.permission === 'granted') {
+        notificationsEnabled = !notificationsEnabled;
+        updateNotifyToggle();
+    } else {
+        requestNotif().then(() => {
+            updateNotifyToggle();
+        });
+    }
+}
+
+function updateNotifyToggle() {
+    localConfig.notifications_enabled = notificationsEnabled ? 'true' : 'false';
+    const switchEl = document.getElementById('notifySwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (notificationsEnabled ? ' active' : '');
+    playSound(notificationsEnabled ? 'toggle-on' : 'toggle-off');
+    pushConfig();
+}
+
+async function loadUserProfiles() {
+    const input = document.getElementById('listener_id');
+    const container = document.getElementById('user-profiles-container');
+    if (!input || !container) return;
+    
+    let rawStr = input.value.trim();
+    let ids = rawStr.split(',').map(s => s.trim()).filter(s => s);
+    
+    if (ids.length > 3) {
+        showToast('SYSTEM', 'Maximum 3 users allowed.');
+        ids = ids.slice(0, 3);
+        input.value = ids.join(', ');
+    }
+    
+    localConfig.listener_id = ids.join(',');
+    pushConfig();
+    
+    container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Loading...</div>';
+    
+    let html = '';
+    for (let uid of ids) {
+        if (uid === 'self') {
+            html += `<div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:4px;"><img src="/logo.png" style="width:24px; height:24px; border-radius:50%;"> <span style="font-size:12px;">Self (Bot)</span></div>`;
+            continue;
+        }
+        try {
+            const r = await fetch(`/api/discord/user?id=${uid}`);
+            if (r.ok) {
+                const data = await r.json();
+                if (data.id) {
+                    const avatarUrl = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : '/logo.png';
+                    html += `<div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:4px;"><img src="${avatarUrl}" style="width:24px; height:24px; border-radius:50%;"> <span style="font-size:12px;">${data.username}</span></div>`;
+                } else {
+                    html += `<div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:4px;"><span style="font-size:12px; color:#ff3333;">Invalid ID: ${uid}</span></div>`;
+                }
+            }
+        } catch (e) {
+            html += `<div style="font-size:12px;">Error: ${uid}</div>`;
+        }
+    }
+    container.innerHTML = html;
+}
+
+let loadedGuilds = [];
+let checkedGuilds = [];
+let checkedChannels = [];
+
+async function loadDiscordServers() {
+    const container = document.getElementById('discord-servers-container');
+    if (!container) return;
+    
+    container.style.display = 'flex';
+    container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Fetching servers from Discord...</div>';
+    
+    try {
+        const r = await fetch('/api/discord/guilds');
+        if (r.ok) {
+            const data = await r.json();
+            if (Array.isArray(data)) {
+                loadedGuilds = data;
+                renderServersUI();
+            } else {
+                container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Failed to load servers. Check Token.</div>';
+            }
+        }
+    } catch (e) {
+        container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Error fetching servers.</div>';
+    }
+}
+
+function renderServersUI() {
+    const container = document.getElementById('discord-servers-container');
+    if (!container) return;
+    
+    // Parse existing selections from config
+    const currentList = (localConfig.pokemon_channel || '').split(',').map(s => s.trim()).filter(s => s);
+    checkedGuilds = [];
+    checkedChannels = [];
+    currentList.forEach(id => {
+        if (loadedGuilds.find(g => g.id === id)) {
+            checkedGuilds.push(id);
+        } else {
+            checkedChannels.push(id);
+        }
+    });
+
+    let html = '';
+    loadedGuilds.forEach(g => {
+        const iconUrl = g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : '/logo.png';
+        const isChecked = checkedGuilds.includes(g.id) ? 'checked' : '';
+        
+        html += `
+            <div style="background:rgba(0,0,0,0.5); padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${iconUrl}" style="width:24px; height:24px; border-radius:50%;">
+                        <span style="font-size:14px;">${g.name}</span>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="guild_${g.id}" ${isChecked} onchange="toggleGuild('${g.id}')">
+                        <label for="guild_${g.id}" style="font-size:12px; cursor:pointer;">Whole Server</label>
+                        <button class="btn" style="padding:2px 8px; font-size:10px; margin-left:10px;" onclick="loadGuildChannels('${g.id}')">Channels ↴</button>
+                    </div>
+                </div>
+                <div id="channels_${g.id}" style="margin-top:10px; margin-left:34px; display:none; flex-direction:column; gap:5px;"></div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function loadGuildChannels(guildId) {
+    const cContainer = document.getElementById(`channels_${guildId}`);
+    if (!cContainer) return;
+    
+    if (cContainer.style.display === 'flex') {
+        cContainer.style.display = 'none';
+        return;
+    }
+    
+    cContainer.style.display = 'flex';
+    if (cContainer.innerHTML !== '') return; // Already loaded
+    
+    cContainer.innerHTML = '<span style="font-size:12px; color:var(--c1);">Loading...</span>';
+    
+    try {
+        const r = await fetch(`/api/discord/channels?guild_id=${guildId}`);
+        if (r.ok) {
+            const data = await r.json();
+            if (Array.isArray(data)) {
+                let html = '';
+                data.filter(c => c.type === 0).forEach(c => { // Only text channels
+                    const isChecked = checkedChannels.includes(c.id) ? 'checked' : '';
+                    html += `
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="chan_${c.id}" ${isChecked} onchange="toggleChannel('${c.id}')">
+                            <label for="chan_${c.id}" style="font-size:12px; cursor:pointer;">#${c.name}</label>
+                        </div>
+                    `;
+                });
+                cContainer.innerHTML = html;
+            }
+        }
+    } catch (e) {
+        cContainer.innerHTML = '<span style="font-size:12px; color:#ff3333;">Failed</span>';
+    }
+}
+
+function toggleGuild(guildId) {
+    const cb = document.getElementById(`guild_${guildId}`);
+    if (cb.checked) {
+        if (checkedGuilds.length >= 5) {
+            showToast('LIMIT', 'Maximum 5 servers allowed.');
+            cb.checked = false;
+            return;
+        }
+        checkedGuilds.push(guildId);
+    } else {
+        checkedGuilds = checkedGuilds.filter(id => id !== guildId);
+    }
+    saveChannelsToConfig();
+}
+
+function toggleChannel(channelId) {
+    const cb = document.getElementById(`chan_${channelId}`);
+    if (cb.checked) {
+        if (checkedChannels.length >= 10) {
+            showToast('LIMIT', 'Maximum 10 channels allowed.');
+            cb.checked = false;
+            return;
+        }
+        checkedChannels.push(channelId);
+    } else {
+        checkedChannels = checkedChannels.filter(id => id !== channelId);
+    }
+    saveChannelsToConfig();
+}
+
+function saveChannelsToConfig() {
+    const combined = [...checkedGuilds, ...checkedChannels].join(',');
+    localConfig.pokemon_channel = combined;
+    document.getElementById('pokemon_channel').value = combined;
     pushConfig();
 }
 
