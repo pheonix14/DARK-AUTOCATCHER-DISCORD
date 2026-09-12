@@ -195,6 +195,36 @@ def on_message(resp, bot, token):
                 bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
             threading.Thread(target=send_delayed_hint, daemon=True).start()
 
+        # Hint Solver
+        if author_id == POKETWO_ID and "the pokémon is" in content.lower():
+            print(f"\033[93m[{PROJECT_NAME}] Hint received: {content}\033[0m")
+            try:
+                # E.g. "The pokémon is K\_ \_ \_ia." or "The pokémon is K___ia."
+                hint_str = content.lower().split("is ")[1].replace(".", "").strip()
+                # Clean up any spaces between underscores and escaped underscores
+                hint_clean = hint_str.replace("\\_", "_").replace(" ", "")
+                
+                with open("pokemon.txt", "r", encoding="utf-8") as f:
+                    all_pokes = f.read().splitlines()
+                
+                import re
+                pattern = hint_clean.replace("_", ".")
+                regex = re.compile(f"^{pattern}$", re.IGNORECASE)
+                
+                matches = [p for p in all_pokes if regex.match(p)]
+                if matches:
+                    import random
+                    guess = random.choice(matches)
+                    print(f"\033[92m[{PROJECT_NAME}] [AI-HINT] Solved hint as: {guess}. Sending catch...\033[0m")
+                    time.sleep(2.0)
+                    bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {guess}")
+                    global LAST_CATCH_TIME
+                    LAST_CATCH_TIME = time.time()
+                else:
+                    print(f"\033[91m[{PROJECT_NAME}] Could not solve hint for pattern: {hint_clean}\033[0m")
+            except Exception as e:
+                print(f"[{PROJECT_NAME}] Hint solver error: {e}")
+
         # Fled Pokemon Tracker
         if author_id == POKETWO_ID and "fled" in content.lower() and "the wild" in content.lower():
             try:
