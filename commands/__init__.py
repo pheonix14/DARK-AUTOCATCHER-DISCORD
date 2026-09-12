@@ -94,3 +94,8 @@ def execute(content, prefix, state, token, channel_id, author_id, author_name, b
                     bot.sendMessage(channel_id, text_msg)
                 except Exception:
                     pass
+    elif text_msg:
+        try:
+            bot.sendMessage(channel_id, text_msg)
+        except Exception as e:
+            print(f"[DARK COMMANDS] Text send error: {e}")

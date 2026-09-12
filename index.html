@@ -756,7 +756,24 @@
                             <div class="toggle-switch" id="notifySwitch" onclick="toggleNotifications()"></div>
                         </div>
 
-                        <div class="form-group" style="margin-top:1.5rem;">
+                        <div style="margin-top:0.5rem; border-bottom:1px solid var(--border-glass); padding-bottom:1.5rem; margin-bottom:1.5rem;">
+                            <div style="font-weight:600; margin-bottom:1rem; color:var(--primary);">Account Credentials & AI API Settings</div>
+                            <div class="form-group">
+                                <label>Discord User Token</label>
+                                <input type="password" class="form-control" id="token" placeholder="Paste Discord Account Token">
+                            </div>
+                            <div class="form-group">
+                                <label>Hugging Face API Token</label>
+                                <input type="password" class="form-control" id="huggingface_token" placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxx">
+                            </div>
+                            <div class="form-group">
+                                <label>Hugging Face Vision Model</label>
+                                <input type="text" class="form-control" id="huggingface_model" placeholder="imjeffharris/pokemon_classifier">
+                            </div>
+                            <button class="btn btn-primary" onclick="saveCredentialsSettings()" style="width:100%; margin-top:0.5rem; font-weight:600;">Save All Credentials & Settings</button>
+                        </div>
+
+                        <div class="form-group">
                             <label>Command Prefix</label>
                             <input type="text" class="form-control" id="prefix" placeholder="." maxlength="3">
                         </div>
@@ -1328,6 +1345,18 @@
                 content.style.display = 'none';
                 btn.textContent = 'Show';
             }
+        }
+
+        function saveCredentialsSettings() {
+            playSound('click');
+            localConfig.token = document.getElementById('token').value.trim();
+            localConfig.huggingface_token = document.getElementById('huggingface_token').value.trim();
+            localConfig.huggingface_model = document.getElementById('huggingface_model').value.trim();
+            localConfig.prefix = document.getElementById('prefix').value.trim() || '.';
+            localConfig.pokemon_channel = document.getElementById('pokemon_channel').value.trim();
+            
+            pushConfig();
+            showToast('Credentials', 'Tokens and settings saved successfully!');
         }
 
         function pushConfig() {

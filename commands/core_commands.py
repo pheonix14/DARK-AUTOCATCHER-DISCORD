@@ -81,24 +81,12 @@ def handle_say(bot, token, channel_id, content, prefix, args):
     return lines, "Command Guidance", text_msg
 
 def handle_cid(bot, token, channel_id):
-    lines = [
-        f"Target Channel ID: {channel_id}",
-        "Verification: SUCCESSFUL"
-    ]
     text_msg = f"Channel ID: `{channel_id}`"
-    return lines, "Location Info", text_msg
+    return None, None, text_msg
 
 def handle_uid(bot, token, channel_id, author_id, args, prefix):
     target_uid = author_id
     if len(args) > 1 and args[1].startswith("<@") and args[1].endswith(">"):
         target_uid = args[1].replace("<@", "").replace("!", "").replace(">", "")
-    lines = [
-        f"Requested User ID: {target_uid}",
-        "Authentication: ALLOWED",
-        f"Usage Syntax: {prefix}uid [@user]"
-    ]
-    text_msg = (
-        f"User ID: `{target_uid}`\n"
-        f"Usage: `{prefix}uid` or `{prefix}uid @user`"
-    )
-    return lines, "Identity Info", text_msg
+    text_msg = f"User ID: `{target_uid}`"
+    return None, None, text_msg
