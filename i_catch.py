@@ -18,7 +18,7 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
 LAST_CATCH_TIME = 0.0
 LAST_SUCCESSFUL_CATCH_TIME = 0.0
 LAST_HINT_TIME = 0.0
-COOLDOWN_PERIOD = 120.0  # 2 minutes cooldown
+COOLDOWN_PERIOD = 2.0  # Allow sequential catches very quickly
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
 
 SPECIAL_SPECIES = ["mew", "celebi", "jirachi", "deoxys", "phione", "manaphy", "darkrai", "shaymin", "arceus", "victini", "keldeo", "meloetta", "genesect", "diancie", "hoopa", "volcanion", "magearna", "marshadow", "zeraora", "meltan", "melmetal", "zarude", "calyrex", "articuno", "zapdos", "moltres", "mewtwo", "raikou", "entei", "suicune", "lugia", "ho-oh", "regirock", "regice", "registeel", "latias", "latios", "kyogre", "groudon", "rayquaza", "uxie", "mesprit", "azelf", "dialga", "palkia", "heatran", "regigigas", "giratina", "cresselia", "cobalion", "terrakion", "virizion", "tornadus", "thundurus", "reshiram", "zekrom", "landorus", "kyurem", "xerneas", "yveltal", "zygarde", "type: null", "silvally", "tapu koko", "tapu lele", "tapu bulu", "tapu fini", "cosmog", "cosmoem", "solgaleo", "lunala", "nihilego", "buzzwole", "pheromosa", "xurkitree", "celesteela", "kartana", "guzzlord", "necrozma", "poipole", "naganadel", "stakataka", "blacephalon", "zamazenta", "zacian", "eternatus", "kubfu", "urshifu", "regieleki", "regidrago", "glastrier", "spectrier", "enamorus"]
@@ -233,10 +233,21 @@ def on_message(resp, bot, token):
                 print(f"[{PROJECT_NAME}] Hint solver error: {e}")
 
         # Fled Pokemon Tracker
-        if author_id == POKETWO_ID and "fled" in content.lower() and "the wild" in content.lower():
+        fled_text = ""
+        if author_id == POKETWO_ID:
+            if "fled" in content.lower() and "the wild" in content.lower():
+                fled_text = content.lower()
+            else:
+                for embed in msg.get("embeds", []):
+                    title = embed.get("title", "").lower()
+                    if "fled" in title and "wild" in title:
+                        fled_text = title
+                        break
+
+        if fled_text:
             try:
-                fled_name = content.split("the wild ")[1].split(" fled")[0].strip()
-                fled_name = fled_name.replace("*", "").replace("_", "").replace("\\", "").strip()
+                fled_name = fled_text.split("wild ")[1].split(" fled")[0].strip()
+                fled_name = fled_name.replace("*", "").replace("_", "").replace("\\", "").strip().title()
                 if fled_name:
                     with open("pokemon.txt", "r", encoding="utf-8") as f:
                         all_pokes = f.read().splitlines()
@@ -284,24 +295,28 @@ def on_message(resp, bot, token):
                     if pokemon_name:
                         rarity = get_rarity(pokemon_name)
                         
-                        catch_delay = 3.0
-                        print(f"\033[92m[{PROJECT_NAME}] [AI] Identified: {pokemon_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...\033[0m")
-                        time.sleep(catch_delay)
-                        
-                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {pokemon_name}")
-                        print(f"\033[92m[{PROJECT_NAME}] [AI] CATCH sent for: {pokemon_name}\033[0m")
-                        # Update cooldown timestamp to block future catches for 120 seconds
-                        LAST_CATCH_TIME = time.time()
-                        
                         import threading
-                        def timeout_hint(spawn_time):
-                            global LAST_HINT_TIME
-                            time.sleep(10.0)
-                            if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
-                                print(f"\033[93m[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...\033[0m")
-                                LAST_HINT_TIME = time.time()
-                                bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
-                        threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
+                        def delayed_catch(p_name, c_id):
+                            catch_delay = 2.0
+                            print(f"\033[92m[{PROJECT_NAME}] [AI] Identified: {p_name} ({rarity}). Waiting {catch_delay:.2f}s to catch...\033[0m")
+                            time.sleep(catch_delay)
+                            
+                            bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")
+                            print(f"\033[92m[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}\033[0m")
+                            # Update cooldown timestamp
+                            global LAST_CATCH_TIME
+                            LAST_CATCH_TIME = time.time()
+                            
+                            def timeout_hint(spawn_time):
+                                global LAST_HINT_TIME
+                                time.sleep(10.0)
+                                if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
+                                    print(f"\033[93m[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...\033[0m")
+                                    LAST_HINT_TIME = time.time()
+                                    bot.sendMessage(c_id, f"<@{POKETWO_ID}> h")
+                            threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
+                            
+                        threading.Thread(target=delayed_catch, args=(pokemon_name, channel_id), daemon=True).start()
                     else:
                         print(f"\033[93m[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.\033[0m")
                         bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
