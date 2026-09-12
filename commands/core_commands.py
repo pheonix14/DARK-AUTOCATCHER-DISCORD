@@ -13,26 +13,66 @@ def handle_ping(bot, token, channel_id, state):
     return lines, "Latency Monitor", text_msg
 
 def handle_status(bot, token, channel_id, state):
-    prefix = state.get("prefix", ".")
-    catch_status = "ENGAGED" if state.get("catch_enabled") else "OFFLINE"
+    from utils import read_config
+    from web_server import load_history
+    
+    config = read_config()
+    logs = load_history()
+    
+    prefix = state.get("prefix", ".") or config.get("prefix", ".")
+    catch_status = "ENGAGED (100% ONLINE)" if state.get("catch_enabled", True) else "OFFLINE / HALTED"
+    hf_model = state.get("huggingface_model") or config.get("huggingface_model", "google/vit-base-patch16-224")
+    pokecoins = config.get("pokecoins_balance", "0")
+    
+    total = len(logs)
+    successful = len([l for l in logs if l.get("status") == "success"])
+    failed = len([l for l in logs if l.get("status") == "failed"])
+    rare = len([l for l in logs if l.get("rarity") in ["RARE", "LEGENDARY", "SHINY"]])
+    ratio = round((successful / total * 100), 1) if total > 0 else 0.0
+
     lines = [
-        f"System Prefix: {prefix}",
-        f"Catcher: {catch_status}",
-        f"Catch Delay: 3.0s (Fixed)",
-        f"Cooldown: 120s (2 minutes)",
-        f"HF Model: {state.get('huggingface_model')}",
-        f"Listener ID: {state.get('listener_id', 'self')}"
+        f"ENGINE STATUS: {catch_status}",
+        f"NEURAL MODEL: {hf_model}",
+        f"SYSTEM PREFIX: {prefix}",
+        "──────────────────────────────────────────",
+        f"SUCCESSFUL CATCHES: {successful}",
+        f"FAILED / FLED: {failed}",
+        f"RARE / SHINY CAUGHT: {rare}",
+        f"SUCCESS RATIO: {ratio}%",
+        "──────────────────────────────────────────",
+        f"VAULT BALANCE: {pokecoins} POKÉCOINS",
+        f"LISTENING TARGET: {state.get('pokemon_channel', 'All Configured')}"
     ]
+
+    components = [
+        {
+            "type": 1,
+            "components": [
+                {
+                    "type": 2,
+                    "style": 3,
+                    "label": "Refresh Status 🔄",
+                    "custom_id": "status_refresh"
+                },
+                {
+                    "type": 2,
+                    "style": 1,
+                    "label": "View History 📜",
+                    "custom_id": "history_1"
+                }
+            ]
+        }
+    ]
+
     text_msg = (
-        f"**[ SYSTEM STATUS ]**\n"
-        f"- Prefix: `{prefix}`\n"
-        f"- Catcher: `{catch_status}`\n"
-        f"- Catch Delay: `3.0s`\n"
-        f"- HF Model: `{state.get('huggingface_model')}`\n"
-        f"- Listener: `{state.get('listener_id', 'self')}`\n"
-        f"- Usage Hint: Type `{prefix}help` to view all submenus."
+        f"**[ PROJECT DARK v3.3.0 — SYSTEM STATUS ]**\n"
+        f"- **Engine Status**: `{catch_status}`\n"
+        f"- **Neural Model**: `{hf_model}`\n"
+        f"- **Catches**: `{successful}` | **Failed**: `{failed}` | **Rare**: `{rare}` (`{ratio}%` Success Rate)\n"
+        f"- **Vault Balance**: `{pokecoins}` Pokécoins"
     )
-    return lines, "Dark System Status", text_msg
+
+    return lines, "SYSTEM DASHBOARD STATUS", text_msg, components
 
 def handle_prefix(bot, token, channel_id, state, args, update_state_func):
     current_prefix = state.get("prefix", ".")

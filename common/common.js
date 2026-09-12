@@ -1,12 +1,12 @@
 /**
- * PROJECT DARK v3.0.0
+ * PROJECT DARK v4.0.0
  * Developed by pheonix14
  * 3-Color Pokémon Theme Common Shared Engine
  */
 
 window.PROJECT_INFO = {
     name: "PROJECT DARK",
-    version: "v3.0.0",
+    version: "v4.0.0",
     developer: "pheonix14"
 };
 
@@ -137,6 +137,9 @@ function connectWebSocket() {
         if (frame.type === 'config') {
             localConfig = frame.data;
             renderConfigToInputs();
+            if (document.getElementById('profiles-container')) {
+                renderDynamicProfiles();
+            }
         } else if (frame.type === 'log') {
             appendSystemLog(frame.data);
         } else if (msg.type === 'structured_logs') {
@@ -158,21 +161,38 @@ function connectWebSocket() {
             handleNewCaptureLog(frame.data);
         } else if (frame.type === 'engine_state') {
             handleEngineState(frame.data, frame.image_url);
+        } else if (frame.type === 'balance_update') {
+            const pEl = document.getElementById('metric-pokecoins');
+            if (pEl) {
+                pEl.textContent = parseInt(frame.data || 0).toLocaleString();
+            }
         }
     };
 }
 
 function handleEngineState(state, imageUrl) {
     const imgEl = document.getElementById('hero-detected-img');
+    const nameEl = document.getElementById('hero-detected-name');
 
     if (!imgEl) return;
 
     if (state === 'detected') {
-        // Hide the raw image so we only show the clean pokemon later
-        imgEl.style.display = 'none';
+        if (imageUrl) {
+            imgEl.src = imageUrl;
+            imgEl.style.display = 'block';
+            imgEl.style.filter = 'drop-shadow(0 0 20px rgba(0,243,255,0.4))';
+        }
+        if (nameEl) {
+            nameEl.textContent = 'DETECTING WILD POKÉMON...';
+            nameEl.style.display = 'block';
+        }
     } else if (state === 'identified') {
         let name = imageUrl; // payload is the pokemon name
         if (name) {
+            if (nameEl) {
+                nameEl.textContent = name.toUpperCase();
+                nameEl.style.display = 'block';
+            }
             let formattedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
             // Handle forms for pokemon showdown
             if (formattedName.includes('alolan')) formattedName = formattedName.replace('alolan', '') + 'alola';
@@ -180,12 +200,17 @@ function handleEngineState(state, imageUrl) {
             if (formattedName.includes('hisuian')) formattedName = formattedName.replace('hisuian', '') + 'hisui';
             if (formattedName.includes('paldean')) formattedName = formattedName.replace('paldean', '') + 'paldea';
 
-            imgEl.src = `https://play.pokemonshowdown.com/sprites/ani/${formattedName}.gif`;
+            const animatedSrc = `https://play.pokemonshowdown.com/sprites/ani/${formattedName}.gif`;
+            const staticSrc = `https://play.pokemonshowdown.com/sprites/gen5/${formattedName}.png`;
+            
+            imgEl.src = animatedSrc;
             imgEl.style.display = 'block';
             imgEl.style.filter = 'drop-shadow(0 0 30px var(--c2))';
             
             imgEl.onerror = () => {
-                imgEl.src = `https://play.pokemonshowdown.com/sprites/gen5/${formattedName}.png`;
+                if (imgEl.src !== staticSrc) {
+                    imgEl.src = staticSrc;
+                }
             };
         }
     } else if (state === 'catch_sent') {
@@ -203,22 +228,67 @@ function handleEngineState(state, imageUrl) {
     } else if (state === 'reset') {
         imgEl.style.display = 'none';
         imgEl.style.filter = 'none';
+        if (nameEl) nameEl.style.display = 'none';
+        localStorage.removeItem('hero_pokemon_state');
+        return;
     }
+
+    try {
+        localStorage.setItem('hero_pokemon_state', JSON.stringify({
+            state: state,
+            imageUrl: imageUrl,
+            src: imgEl.src,
+            name: nameEl ? nameEl.textContent : '',
+            filter: imgEl.style.filter
+        }));
+    } catch(e) {}
 }
 
+function restoreHeroPokemonPreview() {
+    try {
+        const stored = localStorage.getItem('hero_pokemon_state');
+        if (!stored) return;
+        const data = JSON.parse(stored);
+        const imgEl = document.getElementById('hero-detected-img');
+        const nameEl = document.getElementById('hero-detected-name');
+        if (imgEl && data.src) {
+            imgEl.src = data.src;
+            imgEl.style.display = 'block';
+            if (data.filter) imgEl.style.filter = data.filter;
+        }
+        if (nameEl && data.name) {
+            nameEl.textContent = data.name;
+            nameEl.style.display = 'block';
+        }
+    } catch(e) {}
+}
+
+document.addEventListener('DOMContentLoaded', restoreHeroPokemonPreview);
+
+
 function renderConfigToInputs() {
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+        return; // Prevent focus reset and typing glitches
+    }
+
     const setVal = (id, val) => {
         const el = document.getElementById(id);
         if (el) el.value = val || '';
     };
 
-    setVal('token', localConfig.token);
     setVal('huggingface_token', localConfig.huggingface_token);
     setVal('huggingface_model', localConfig.huggingface_model);
     setVal('prefix', localConfig.prefix || '.');
-    setVal('pokemon_channel', localConfig.pokemon_channel);
     setVal('spam_channel_id', localConfig.spam_channel_id);
+    setVal('spam_custom_message', localConfig.spam_custom_message);
+    setVal('spam_count', localConfig.spam_count || '0');
     setVal('spam_delay', localConfig.spam_delay || '45.0');
+
+    const pEl = document.getElementById('metric-pokecoins');
+    if (pEl && localConfig.pokecoins_balance !== undefined) {
+        pEl.textContent = parseInt(localConfig.pokecoins_balance || 0).toLocaleString();
+    }
     
     let listenerRaw = localConfig.listener_id || 'self';
     let listenerIds = listenerRaw.split(',').map(s => s.trim()).filter(s => s);
@@ -238,10 +308,58 @@ function renderConfigToInputs() {
     const spamSwitch = document.getElementById('spamSwitch');
     if (spamSwitch) spamSwitch.className = 'toggle-switch' + (spamActive ? ' active' : '');
 
+    const spamInfActive = localConfig.spam_infinity === 'true';
+    const spamInfSwitch = document.getElementById('spamInfinitySwitch');
+    if (spamInfSwitch) spamInfSwitch.className = 'toggle-switch' + (spamInfActive ? ' active' : '');
+
+    const catchActive = localConfig.catch_enabled !== 'false';
+    const catchSwitch = document.getElementById('catchSwitch');
+    if (catchSwitch) catchSwitch.className = 'toggle-switch' + (catchActive ? ' active' : '');
+
+    const imgCatchActive = localConfig.image_catch_enabled !== 'false';
+    const imgCatchSwitch = document.getElementById('imageCatchSwitch');
+    if (imgCatchSwitch) imgCatchSwitch.className = 'toggle-switch' + (imgCatchActive ? ' active' : '');
+
     const hfModelStat = document.getElementById('stat-hf-model');
     if (hfModelStat) {
         hfModelStat.textContent = 'Model: ' + (localConfig.huggingface_model ? localConfig.huggingface_model.split('/').pop() : 'imjeffharris');
     }
+}
+
+function toggleSpammer() {
+    const isSpam = localConfig.spam_enabled === 'true';
+    localConfig.spam_enabled = isSpam ? 'false' : 'true';
+    const switchEl = document.getElementById('spamSwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.spam_enabled === 'true' ? ' active' : '');
+    playSound(localConfig.spam_enabled === 'true' ? 'toggle-on' : 'toggle-off');
+    pushConfig();
+}
+
+function toggleSpamInfinity() {
+    const isInf = localConfig.spam_infinity === 'true';
+    localConfig.spam_infinity = isInf ? 'false' : 'true';
+    const switchEl = document.getElementById('spamInfinitySwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.spam_infinity === 'true' ? ' active' : '');
+    playSound(localConfig.spam_infinity === 'true' ? 'toggle-on' : 'toggle-off');
+    pushConfig();
+}
+
+function toggleCatcher() {
+    const isCatch = localConfig.catch_enabled !== 'false';
+    localConfig.catch_enabled = isCatch ? 'false' : 'true';
+    const switchEl = document.getElementById('catchSwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.catch_enabled === 'true' ? ' active' : '');
+    playSound(localConfig.catch_enabled === 'true' ? 'toggle-on' : 'toggle-off');
+    pushConfig();
+}
+
+function toggleImageCatcher() {
+    const isImgCatch = localConfig.image_catch_enabled !== 'false';
+    localConfig.image_catch_enabled = isImgCatch ? 'false' : 'true';
+    const switchEl = document.getElementById('imageCatchSwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.image_catch_enabled === 'true' ? ' active' : '');
+    playSound(localConfig.image_catch_enabled === 'true' ? 'toggle-on' : 'toggle-off');
+    pushConfig();
 }
 
 function appendSystemLog(log) {
@@ -397,16 +515,28 @@ function updateAcquisitionsMetrics() {
     const sEl = document.getElementById('metric-success');
     const fEl = document.getElementById('metric-failed');
     const rEl = document.getElementById('metric-ratio');
-    if (!sEl && !fEl && !rEl) return;
+    const rareEl = document.getElementById('metric-rare');
+    const heroRareCount = document.getElementById('hero-rare-count');
+    const heroRareContainer = document.getElementById('hero-rare-caught-container');
 
     const successes = structuredCatches.filter(c => c.status === 'success').length;
     const fails = structuredCatches.filter(c => c.status === 'failed').length;
     const total = successes + fails;
     const ratio = total > 0 ? Math.round((successes / total) * 100) : 0;
 
+    const rareCount = structuredCatches.filter(c => c.status === 'success' && c.rarity && (
+        c.rarity.toLowerCase().includes('rare') || 
+        c.rarity.toLowerCase().includes('shiny') || 
+        c.rarity.toLowerCase().includes('legendary') ||
+        c.rarity.toLowerCase().includes('mythical')
+    )).length;
+
     if (sEl) sEl.textContent = successes;
     if (fEl) fEl.textContent = fails;
     if (rEl) rEl.textContent = ratio + '%';
+    if (rareEl) rareEl.textContent = rareCount;
+    if (heroRareCount) heroRareCount.textContent = rareCount;
+    if (heroRareContainer && rareCount > 0) heroRareContainer.style.display = 'block';
 }
 
 function testAddStructuredLog() {
@@ -425,9 +555,18 @@ function clearHistory() {
     }
 }
 
-function pushConfig() {
+async function pushConfig() {
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'update_config', data: localConfig }));
+    }
+    try {
+        await fetch('/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localConfig)
+        });
+    } catch (e) {
+        console.error("HTTP pushConfig error:", e);
     }
 }
 
@@ -438,23 +577,22 @@ function saveCredentialsSettings() {
         return el ? el.value.trim() : null;
     };
 
-    const token = getVal('token');
-    const token2 = getVal('token2');
     const hfToken = getVal('huggingface_token');
     const hfModel = getVal('huggingface_model');
     const prefix = getVal('prefix');
-    const pokeChannel = getVal('pokemon_channel');
 
-    if (token !== null) localConfig.token = token;
-    if (token2 !== null) localConfig.token2 = token2;
     if (hfToken !== null) localConfig.huggingface_token = hfToken;
     if (hfModel !== null) localConfig.huggingface_model = hfModel;
     if (prefix !== null) localConfig.prefix = prefix || '.';
-    if (pokeChannel !== null) localConfig.pokemon_channel = pokeChannel;
 
     const spamChannel = getVal('spam_channel_id');
+    const spamCustom = getVal('spam_custom_message');
+    const spamCount = getVal('spam_count');
     const spamDelay = getVal('spam_delay');
+
     if (spamChannel !== null) localConfig.spam_channel_id = spamChannel;
+    if (spamCustom !== null) localConfig.spam_custom_message = spamCustom;
+    if (spamCount !== null) localConfig.spam_count = spamCount;
     if (spamDelay !== null) localConfig.spam_delay = spamDelay;
 
     pushConfig();
@@ -551,9 +689,12 @@ let checkedChannels = [];
 let activeTargetInput = '';
 let activeTargetContainer = '';
 
-async function loadDiscordServers(inputId, containerId) {
+let activeTargetToken = '';
+
+async function loadDiscordServers(inputId, containerId, token = '') {
     activeTargetInput = inputId;
     activeTargetContainer = containerId;
+    activeTargetToken = token;
     
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -562,7 +703,10 @@ async function loadDiscordServers(inputId, containerId) {
     container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Fetching servers from Discord...</div>';
     
     try {
-        const r = await fetch('/api/discord/guilds');
+        let url = '/api/discord/guilds';
+        if (token) url += '?token=' + encodeURIComponent(token);
+        
+        const r = await fetch(url);
         if (r.ok) {
             const data = await r.json();
             if (Array.isArray(data)) {
@@ -600,19 +744,20 @@ function renderServersUI() {
         const isChecked = checkedGuilds.includes(g.id) ? 'checked' : '';
         
         html += `
-            <div style="background:rgba(0,0,0,0.5); padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:4px;">
+            <div style="background:rgba(0,0,0,0.5); padding:12px 16px; border:1px solid rgba(255,255,255,0.08); border-radius:6px; font-family:'Space Grotesk', sans-serif;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <img src="${iconUrl}" style="width:24px; height:24px; border-radius:50%;">
-                        <span style="font-size:14px;">${g.name}</span>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="${iconUrl}" style="width:28px; height:28px; border-radius:50%; border:1px solid rgba(255,255,255,0.2);">
+                        <span style="font-size:14px; font-weight:700; color:#fff;">${g.name}</span>
                     </div>
-                    <div>
-                        <input type="checkbox" id="guild_${g.id}" ${isChecked} onchange="toggleGuild('${g.id}')">
-                        <label for="guild_${g.id}" style="font-size:12px; cursor:pointer;">Whole Server</label>
-                        <button class="btn" style="padding:2px 8px; font-size:10px; margin-left:10px;" onclick="loadGuildChannels('${g.id}')">Channels ↴</button>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <label for="guild_${g.id}" style="font-size:12px; cursor:pointer; color:rgba(255,255,255,0.8); display:flex; align-items:center; gap:6px;">
+                            <input type="checkbox" id="guild_${g.id}" ${isChecked} onchange="toggleGuild('${g.id}')"> Select Entire Server
+                        </label>
+                        <button type="button" class="btn btn-ghost-dark" style="padding:4px 12px; font-size:11px;" onclick="loadGuildChannels('${g.id}')">View Channels ↴</button>
                     </div>
                 </div>
-                <div id="channels_${g.id}" style="margin-top:10px; margin-left:34px; display:none; flex-direction:column; gap:5px;"></div>
+                <div id="channels_${g.id}" style="margin-top:10px; margin-left:36px; display:none; flex-direction:column; gap:6px;"></div>
             </div>
         `;
     });
@@ -635,7 +780,10 @@ async function loadGuildChannels(guildId) {
     cContainer.innerHTML = '<span style="font-size:12px; color:var(--c1);">Loading...</span>';
     
     try {
-        const r = await fetch(`/api/discord/channels?guild_id=${guildId}`);
+        let url = `/api/discord/channels?guild_id=${guildId}`;
+        if (activeTargetToken) url += '&token=' + encodeURIComponent(activeTargetToken);
+        
+        const r = await fetch(url);
         if (r.ok) {
             const data = await r.json();
             if (Array.isArray(data)) {
@@ -689,48 +837,246 @@ function toggleChannel(channelId) {
 
 function saveChannelsToConfig() {
     const combined = [...checkedGuilds, ...checkedChannels].join(',');
-    localConfig[activeTargetInput] = combined;
-    document.getElementById(activeTargetInput).value = combined;
-    pushConfig();
+    const inputEl = document.getElementById(activeTargetInput);
+    if (inputEl) inputEl.value = combined;
 }
 
-async function loadBotProfile(tokenId, containerId) {
-    const token = document.getElementById(tokenId).value.trim();
-    const container = document.getElementById(containerId);
+
+/* ══ DYNAMIC PROFILES LOGIC ══ */
+async function renderDynamicProfiles() {
+    const container = document.getElementById('profiles-container');
     if (!container) return;
-    
-    if (!token) {
-        container.innerHTML = '';
+
+    // Prevent overwriting if user is currently editing an account form
+    if (container.querySelector('[id^="edit_token_"]')) {
         return;
     }
-    
-    container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Loading Profile...</div>';
+
+    let html = '';
+    let accountCount = 0;
+
+    const accounts = [
+        { idx: 1, token: localConfig.token, status: localConfig.token_status || 'enabled', channels: localConfig.pokemon_channel, afk: localConfig.afk_msg1 },
+        { idx: 2, token: localConfig.token2, status: localConfig.token_status2 || 'enabled', channels: localConfig.pokemon_channel2, afk: localConfig.afk_msg2 }
+    ];
+
+    for (const acc of accounts) {
+        if (acc.token && acc.token.trim() !== '') {
+            accountCount++;
+            
+            // Profile Card View
+            const isActive = acc.status === 'enabled';
+            
+            let channelsHtml = '<span style="color:rgba(255,255,255,0.3); font-style:italic;">No channels selected</span>';
+            if (acc.channels && acc.channels.trim() !== '') {
+                const list = acc.channels.split(',').map(s => s.trim()).filter(s => s);
+                channelsHtml = list.map(c => `<span style="display:inline-block; background:rgba(204,0,0,0.15); border:1px solid rgba(204,0,0,0.4); color:#fff; padding:3px 8px; border-radius:4px; font-size:11px; font-family:monospace; margin:2px;">#${c}</span>`).join(' ');
+            }
+
+            html += `
+            <div class="card" id="profile-card-${acc.idx}">
+                <div class="card-num">ACC_${acc.idx}</div>
+                <div class="card-icon">${acc.idx === 1 ? '◈' : '◎'}</div>
+                <h3 style="color:${acc.idx === 1 ? 'var(--c1)' : 'var(--c2)'}; font-family:'Bebas Neue', sans-serif;">Account ${acc.idx}</h3>
+                
+                <div id="prof-display-${acc.idx}" style="margin-bottom:20px; min-height:80px;">
+                    <div style="font-size:12px; color:rgba(255,255,255,0.5); font-family:'Space Grotesk', sans-serif;">Loading Profile...</div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:12px 16px; background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.05); font-family:'Space Grotesk', sans-serif;">
+                    <div>
+                        <span style="font-size:11px; color:rgba(255,255,255,0.6); display:block; margin-bottom:2px; text-transform:uppercase; letter-spacing:1px;">Engine Status</span>
+                        <span style="font-size:14px; font-weight:bold; color:${isActive ? '#00ff00' : '#ff3333'};">${isActive ? 'RUNNING' : 'HOLD'}</span>
+                    </div>
+                    <div class="toggle-switch ${isActive ? 'active' : ''}" onclick="toggleAccountStatus(${acc.idx})">
+                        <div class="toggle-thumb"></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:15px;">
+                    <span style="font-size:11px; font-family:'Space Grotesk', sans-serif; color:rgba(255,255,255,0.6); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Target Channels</span>
+                    <div style="font-size:12px; background:rgba(0,0,0,0.5); padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); min-height:40px; display:flex; flex-wrap:wrap; align-items:center; word-break:break-all;">
+                        ${channelsHtml}
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:15px; margin-top:20px;">
+                    <button type="button" class="btn" style="flex:1;" onclick="showEditAccountForm(${acc.idx})">Edit Account</button>
+                    <button type="button" class="btn btn-danger" style="flex:1;" onclick="deleteAccount(${acc.idx})">Delete Account</button>
+                </div>
+            </div>`;
+        }
+    }
+
+    if (accountCount < 2) {
+        const nextIdx = (accounts[0].token && accounts[0].token.trim() !== '') ? 2 : 1;
+        html += `
+        <div class="card" style="display:flex; flex-direction:column; align-items:center; justify-content:center; border: 2px dashed rgba(255,255,255,0.2); background:transparent; cursor:pointer;" onclick="showEditAccountForm(${nextIdx}, true)">
+            <div style="font-size:40px; color:rgba(255,255,255,0.5); margin-bottom:10px;">+</div>
+            <h3 style="color:rgba(255,255,255,0.5); font-family:'Bebas Neue', sans-serif;">Add Account ${nextIdx}</h3>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+
+    // Fetch and inject profile data
+    for (const acc of accounts) {
+        if (acc.token && acc.token.trim() !== '') {
+            fetchAndInjectProfileData(acc.token, `prof-display-${acc.idx}`);
+        }
+    }
+}
+
+async function fetchAndInjectProfileData(token, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
     try {
         const r = await fetch(`/api/discord/me?token=${encodeURIComponent(token)}`);
         if (r.ok) {
             const data = await r.json();
             if (data.id) {
                 const avatarUrl = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : '/logo.png';
-                container.innerHTML = `<div style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.1); padding:10px; border-radius:4px;"><img src="${avatarUrl}" style="width:32px; height:32px; border-radius:50%;"> <div><div style="font-size:14px; font-weight:bold;">${data.username}</div><div style="font-size:10px; color:rgba(255,255,255,0.5);">ID: ${data.id}</div></div></div>`;
+                container.innerHTML = `
+                <div style="display:flex; align-items:center; gap:16px; background:rgba(255,255,255,0.03); padding:14px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
+                    <div style="position:relative; flex-shrink:0;">
+                        <img src="${avatarUrl}" style="width:60px; height:60px; border-radius:50%; border:2px solid var(--c1); box-shadow:0 0 15px rgba(204,0,0,0.4); object-fit:cover; display:block;" onerror="this.src='/logo.png'">
+                        <div style="position:absolute; bottom:2px; right:2px; width:14px; height:14px; background:#00ff00; border-radius:50%; border:2px solid #0a0a0a; box-shadow:0 0 8px #00ff00;"></div>
+                    </div>
+                    <div>
+                        <div style="font-family:'Bebas Neue', sans-serif; font-size:22px; letter-spacing:1px; color:#fff; line-height:1.1;">${data.username}</div>
+                        <div style="font-family:'Space Grotesk', sans-serif; font-size:12px; color:rgba(255,255,255,0.5); margin-top:4px;">ID: <span style="color:var(--c2); font-family:monospace;">${data.id}</span></div>
+                    </div>
+                </div>`;
             } else {
-                container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Invalid Token</div>';
+                container.innerHTML = '<div style="font-size:12px; color:#ff3333; font-family:\'Space Grotesk\', sans-serif;">Invalid Token</div>';
             }
         } else {
-            container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Failed to load profile.</div>';
+            container.innerHTML = '<div style="font-size:12px; color:#ff3333; font-family:\'Space Grotesk\', sans-serif;">Failed to load profile.</div>';
         }
     } catch (e) {
-        container.innerHTML = `<div style="font-size:12px; color:#ff3333;">Error: ${e}</div>`;
+        container.innerHTML = `<div style="font-size:12px; color:#ff3333; font-family:'Space Grotesk', sans-serif;">Error: ${e}</div>`;
     }
 }
 
-function toggleSpammer() {
-    const isSpammer = localConfig.spam_enabled === 'true';
-    localConfig.spam_enabled = isSpammer ? 'false' : 'true';
-    const switchEl = document.getElementById('spamSwitch');
-    if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.spam_enabled === 'true' ? ' active' : '');
-    playSound(localConfig.spam_enabled === 'true' ? 'toggle-on' : 'toggle-off');
-    pushConfig();
+function showEditAccountForm(idx, isNew = false) {
+    playSound('click');
+    const container = document.getElementById('profiles-container');
+    const tKey = idx === 1 ? 'token' : 'token2';
+    const cKey = idx === 1 ? 'pokemon_channel' : 'pokemon_channel2';
+    const aKey = idx === 1 ? 'afk_msg1' : 'afk_msg2';
+    
+    const currentToken = isNew ? '' : (localConfig[tKey] || '');
+    const currentChannels = isNew ? '' : (localConfig[cKey] || '');
+    const currentAfk = isNew ? '' : (localConfig[aKey] || '');
+
+    const html = `
+    <div class="card" style="grid-column: 1/-1;">
+        <div class="card-num">EDIT_${idx}</div>
+        <div class="card-icon">${idx === 1 ? '◈' : '◎'}</div>
+        <h3 style="color:${idx === 1 ? 'var(--c1)' : 'var(--c2)'};">${isNew ? 'Add' : 'Edit'} Account ${idx}</h3>
+        
+        <div class="form-group">
+            <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:rgba(255,255,255,0.7);">Discord Token</label>
+            <input type="text" id="edit_token_${idx}" value="${currentToken}" placeholder="Paste Discord token here">
+        </div>
+
+        <div class="form-group" style="margin-top:20px;">
+            <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:rgba(255,255,255,0.7);">Target Channels</label>
+            <input type="text" id="edit_channels_${idx}" value="${currentChannels}" placeholder="Selected Channel IDs (comma separated)">
+            <button type="button" class="btn btn-ghost-dark" style="width:100%; margin-top:10px;" onclick="loadDiscordServersForEdit(${idx})">Fetch Servers & Channels</button>
+            <div id="edit_servers_container_${idx}" style="margin-top:10px; max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:4px; display:none; flex-direction:column; gap:10px;"></div>
+        </div>
+
+        <div class="form-group" style="margin-top:20px;">
+            <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:rgba(255,255,255,0.7);">AFK Message</label>
+            <textarea id="edit_afk_${idx}" rows="3" style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:12px 16px; font-family:'Space Grotesk'; font-size:14px; resize:none; outline:none; caret-color:var(--c1);" placeholder="I'm currently away.">${currentAfk}</textarea>
+        </div>
+
+        <div style="display:flex; gap:15px; margin-top:25px;">
+            <button type="button" class="btn" style="flex:1;" onclick="saveAccountForm(${idx})">Save Account</button>
+            <button type="button" class="btn btn-ghost-dark" style="flex:1;" onclick="renderDynamicProfiles()">Cancel</button>
+        </div>
+    </div>`;
+
+    container.innerHTML = html;
 }
+
+function loadDiscordServersForEdit(idx) {
+    const tokenInput = document.getElementById(`edit_token_${idx}`);
+    if (!tokenInput || !tokenInput.value.trim()) {
+        showToast('ERROR', 'Please enter a token first.');
+        return;
+    }
+    loadDiscordServers(`edit_channels_${idx}`, `edit_servers_container_${idx}`, tokenInput.value.trim());
+}
+
+async function saveAccountForm(idx) {
+    playSound('click');
+    const tKey = idx === 1 ? 'token' : 'token2';
+    const cKey = idx === 1 ? 'pokemon_channel' : 'pokemon_channel2';
+    const aKey = idx === 1 ? 'afk_msg1' : 'afk_msg2';
+    const sKey = idx === 1 ? 'token_status' : 'token_status2';
+
+    const tokenVal = document.getElementById(`edit_token_${idx}`).value.trim();
+    const channelsVal = document.getElementById(`edit_channels_${idx}`).value.trim();
+    const afkVal = document.getElementById(`edit_afk_${idx}`).value;
+
+    if (!tokenVal) {
+        showToast('ERROR', 'Token cannot be empty.');
+        return;
+    }
+    
+    const otherTKey = idx === 1 ? 'token2' : 'token';
+    if (localConfig[otherTKey] === tokenVal) {
+        showToast('ERROR', 'This token is already added to another account.');
+        return;
+    }
+
+    localConfig[tKey] = tokenVal;
+    localConfig[cKey] = channelsVal;
+    localConfig[aKey] = afkVal;
+    
+    // Ensure status is enabled by default for new accounts
+    if (!localConfig[sKey]) localConfig[sKey] = 'enabled';
+
+    await pushConfig();
+    showToast('SAVED', `Account ${idx} configuration saved.`);
+    
+    // Clear edit form and return to cards view
+    const container = document.getElementById('profiles-container');
+    if (container) container.innerHTML = '';
+    renderDynamicProfiles();
+}
+
+async function toggleAccountStatus(idx) {
+    const sKey = idx === 1 ? 'token_status' : 'token_status2';
+    const current = localConfig[sKey] || 'enabled';
+    localConfig[sKey] = current === 'enabled' ? 'disabled' : 'enabled';
+    
+    playSound(localConfig[sKey] === 'enabled' ? 'toggle-on' : 'toggle-off');
+    await pushConfig();
+    renderDynamicProfiles();
+}
+
+async function deleteAccount(idx) {
+    if (confirm(`Are you sure you want to delete Account ${idx}?`)) {
+        playSound('fail');
+        const tKey = idx === 1 ? 'token' : 'token2';
+        const cKey = idx === 1 ? 'pokemon_channel' : 'pokemon_channel2';
+        const aKey = idx === 1 ? 'afk_msg1' : 'afk_msg2';
+        const sKey = idx === 1 ? 'token_status' : 'token_status2';
+
+        localConfig[tKey] = '';
+        localConfig[cKey] = '';
+        localConfig[aKey] = '';
+        localConfig[sKey] = '';
+
+        await pushConfig();
+        showToast('DELETED', `Account ${idx} removed.`);
+        setTimeout(renderDynamicProfiles, 100);
+    }
+}
+
 
 /* ══ UI LOGIC PORTED FROM ref.html ══ */
 
@@ -761,12 +1107,13 @@ let bgIdx = SEED;
 let colorIdx = Math.floor(Math.random() * COLORS.length);
 
 function applyColors(i) {
-    const colorBleed = document.getElementById('colorBleed');
-    if(!colorBleed) return;
     const [c1, c2] = COLORS[i % COLORS.length];
     document.documentElement.style.setProperty('--c1', c1);
     document.documentElement.style.setProperty('--c2', c2);
-    colorBleed.style.background = `radial-gradient(ellipse at 30% 70%, ${c1}44, transparent 60%), radial-gradient(ellipse at 70% 30%, ${c2}33, transparent 60%)`;
+    const colorBleed = document.getElementById('colorBleed');
+    if(colorBleed) {
+        colorBleed.style.background = `radial-gradient(ellipse at 30% 70%, ${c1}44, transparent 60%), radial-gradient(ellipse at 70% 30%, ${c2}33, transparent 60%)`;
+    }
 }
 
 function setWatermark() {
@@ -865,7 +1212,7 @@ window.addEventListener('load', () => {
         // Marquee
         const mq = document.getElementById('mq');
         if (mq) {
-            const MQ_ITEMS = ['PROJECT DARK', 'v3.0.0', 'PHEONIX14', 'AUTOCATCHER', '◈', 'SYSTEM SECURE', 'LIFETIME', '◈'];
+            const MQ_ITEMS = ['PROJECT DARK', 'v4.0.0', 'PHEONIX14', 'AUTOCATCHER', '◈', 'SYSTEM SECURE', 'LIFETIME', '◈'];
             const fill = [...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS];
             fill.forEach(txt => {
                 const d = document.createElement('div');
@@ -917,7 +1264,7 @@ window.addEventListener('load', () => {
     document.querySelectorAll('input[type="text"], input[type="password"], select').forEach(input => {
         input.addEventListener('change', () => {
             const id = input.id;
-            if (id && !id.startsWith('react') && id !== 'searchPokemon') {
+            if (id && !id.startsWith('react') && id !== 'searchPokemon' && !id.startsWith('edit_') && !input.closest('#profiles-container')) {
                 localConfig[id] = input.value;
                 pushConfig();
             }

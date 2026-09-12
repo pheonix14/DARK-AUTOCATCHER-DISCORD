@@ -4,7 +4,7 @@ use std::time::Duration;
 
 pub async fn query_huggingface(image_url: &str, token: &str, model_id: &str) -> Option<String> {
     let client = Client::new();
-    let api_url = format!("https://api-inference.huggingface.co/models/{}", model_id);
+    let api_url = format!("https://router.huggingface.co/hf-inference/models/{}", model_id);
     
     // Fetch image bytes
     let img_res = client.get(image_url).send().await.ok()?;
@@ -13,6 +13,7 @@ pub async fn query_huggingface(image_url: &str, token: &str, model_id: &str) -> 
     for _attempt in 0..5 {
         let response = client.post(&api_url)
             .header("Authorization", format!("Bearer {}", token))
+            .header("Content-Type", "image/png")
             .body(img_bytes.clone())
             .timeout(Duration::from_secs(15))
             .send()

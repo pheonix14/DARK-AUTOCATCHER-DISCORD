@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 
 os.system("color")  # Enable ANSI colors on Windows
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 # Load environment variables
 load_dotenv()
 PROJECT_NAME = os.getenv("PROJECT_NAME", "PROJECT DARK")
@@ -30,6 +32,7 @@ except ImportError as e:
 if DEPENDENCIES_INSTALLED:
     import utility_controller
     import i_catch
+    import spawner
     import interaction_handler
     import web_server
 
@@ -107,6 +110,7 @@ def main_worker():
             interaction_handler.set_bot(bot)
             utility_controller.setup(bot, token)
             i_catch.setup(bot, token)
+            spawner.setup(bot, token)
             
             web_server.add_log(f"Node {token[:10]} SECURED AND ONLINE.")
             bot.gateway.run()
@@ -114,33 +118,51 @@ def main_worker():
             web_server.add_log(f"NODE CRASHED ({token[:10]}): {e}")
 
     # 1. Start Dashboard
-    web_server.start_server(http_port=8085, ws_port=8086, open_browser=True)
+    is_cloud = os.environ.get("RENDER") == "true" or os.environ.get("DOCKER") == "1" or "PORT" in os.environ
+    http_port = int(os.environ.get("PORT", 8085))
+    web_server.start_server(http_port=http_port, ws_port=8086, open_browser=not is_cloud)
 
-    # 2. Read token
+    # 2. Read Configuration
     config = web_server.read_config()
-    token = config.get("token", "").strip()
-    
-    if not token or token == "YOUR_TOKEN_HERE":
-        web_server.add_log("No token configured! Open the dashboard Settings tab to set your token.")
-        print(f"[{PROJECT_NAME}] Waiting for token to be configured in config.txt...")
+    print(f"[{PROJECT_NAME}] [CONFIG SYNCED] Successfully read configuration from config.txt")
+
+    # 3. Boot the bots dynamically
+    tokens_to_boot = []
+    for k, v in config.items():
+        if k.startswith("token") and not k.startswith("token_status") and isinstance(v, str):
+            val = v.strip()
+            if val and val != "YOUR_TOKEN_HERE" and val not in tokens_to_boot:
+                status_key = "token_status" + k[len("token"):]
+                if config.get(status_key, "enabled") == "enabled":
+                    tokens_to_boot.append(val)
+
+    if not tokens_to_boot:
+        web_server.add_log("No valid token configured or all accounts are on HOLD! Open the dashboard Settings tab to set your tokens.")
+        wait_printed = False
         while True:
+            if not wait_printed:
+                print(f"[{PROJECT_NAME}] Waiting for token to be configured in config.txt...")
+                wait_printed = True
             try:
                 config = web_server.read_config()
-                token = config.get("token", "").strip()
-                if token and token != "YOUR_TOKEN_HERE":
+                for k, v in config.items():
+                    if k.startswith("token") and not k.startswith("token_status") and isinstance(v, str):
+                        val = v.strip()
+                        if val and val != "YOUR_TOKEN_HERE" and val not in tokens_to_boot:
+                            status_key = "token_status" + k[len("token"):]
+                            if config.get(status_key, "enabled") == "enabled":
+                                tokens_to_boot.append(val)
+                if tokens_to_boot:
                     break
                 time.sleep(3)
             except KeyboardInterrupt:
                 return
 
-    # 3. Boot the bot
-    web_server.add_log(f"Token detected. Launching Pokétwo engine...")
-    threading.Thread(target=start_instance, args=(token,), daemon=True).start()
-    
-    token2 = config.get("token2", "").strip()
-    if token2 and token2 != "YOUR_TOKEN_HERE":
-        web_server.add_log(f"Secondary token detected. Launching Pokétwo engine...")
-        threading.Thread(target=start_instance, args=(token2,), daemon=True).start()
+    web_server.add_log(f"Detected {len(tokens_to_boot)} token account(s). Launching Pokétwo engine instances...")
+    web_server.add_log("⭐ Like the bot? Consider buying Premium to support its development! Check the Premium tab.")
+    for idx, tok in enumerate(tokens_to_boot, start=1):
+        web_server.add_log(f"Launching bot instance #{idx}...")
+        threading.Thread(target=start_instance, args=(tok,), daemon=True).start()
     
     try:
         while True:

@@ -5,3 +5,5 @@ ImageHash
 discum
 websockets
 watchdog
+onnxruntime
+numpy

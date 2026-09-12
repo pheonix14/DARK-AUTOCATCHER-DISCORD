@@ -3,11 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT DARK v3.0.0 — Profiles & AFK</title>
+    <title>PROJECT DARK v4.0.0 — Profiles & AFK</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/common/style.css">
 </head>
 <body>
+
+    <!-- PAGE LOADER -->
+    <div id="loader">
+        <div class="loader-logo">PROJECT DARK</div>
+        <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+    </div>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div><div id="cursor-ring"></div>
+
+    <!-- BACKGROUNDS -->
+    <div id="bg-wrap"><img id="bg-img" src="" alt="" class="fade-in"></div>
+    <div class="bg-grain"></div>
+    <div class="bg-color-bleed" id="colorBleed"></div>
+    <div class="vignette"></div>
+
+    <!-- WATERMARK -->
+    <div id="wm">PROJECT DARK</div>
 
     <!-- NOTIFICATION TOAST -->
     <div id="notif-toast">
@@ -24,47 +42,13 @@
             <p class="hero-eyebrow">◈ Dashboard — AFK Auto-Responder</p>
             <h1 class="hero-h1">USER <br><em>PROFILES</em></h1>
         </div>
-
-        <div class="cards" style="align-items:flex-start;">
-            
-            <!-- Account 1 -->
-            <div class="card">
-                <div class="card-num">ACC_1</div>
-                <div class="card-icon">◈</div>
-                <h3>Primary Account</h3>
-                <p style="margin-bottom:20px;">Configuration for Account 1 AFK Response.</p>
-
-                <div id="acc1-profile-container" style="margin-bottom:20px;">
-                    <!-- Fetched Profile goes here -->
-                    <div style="font-size:12px; color:rgba(255,255,255,0.5);">Token not configured or loading...</div>
-                </div>
-
-                <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">AFK Message</label>
-                    <textarea id="afk_msg1" rows="3" style="width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:10px; font-family:'Space Grotesk'; font-size:12px; resize:none;" placeholder="I'm currently away."></textarea>
-                </div>
-            </div>
-
-            <!-- Account 2 -->
-            <div class="card">
-                <div class="card-num">ACC_2</div>
-                <div class="card-icon">◎</div>
-                <h3 style="color:var(--c2);">Secondary Account</h3>
-                <p style="margin-bottom:20px;">Configuration for Account 2 AFK Response.</p>
-                
-                <div id="acc2-profile-container" style="margin-bottom:20px;">
-                    <!-- Fetched Profile goes here -->
-                    <div style="font-size:12px; color:rgba(255,255,255,0.5);">Token not configured or loading...</div>
-                </div>
-
-                <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">AFK Message</label>
-                    <textarea id="afk_msg2" rows="3" style="width:100%; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); color:#fff; padding:10px; font-family:'Space Grotesk'; font-size:12px; resize:none;" placeholder="I'm currently away."></textarea>
-                </div>
-            </div>
-
+        <div class="cards" style="align-items:flex-start;" id="profiles-container">
+            <!-- Dynamic Profiles injected here by common.js -->
+        </div>
+        
+        <div class="cards" style="align-items:flex-start; margin-top: 20px;">
             <!-- Global AFK Settings -->
-            <div class="card">
+            <div class="card" style="grid-column: 1/-1;">
                 <div class="card-num">AFK_SYS</div>
                 <div class="card-icon">⬡</div>
                 <h3 style="color:#ff3333;">AFK System</h3>
@@ -77,8 +61,6 @@
                     </div>
                     <div class="toggle-switch" id="afkSwitch" onclick="toggleAFK()"></div>
                 </div>
-
-                <button class="btn" style="width:100%; margin-top:10px; border-color:var(--c2); color:var(--c2);" onclick="saveProfilesSettings()">Save Profiles</button>
             </div>
         </div>
     </section>
@@ -96,7 +78,7 @@
             </ul>
         </div>
         <div class="footer-bottom">
-            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v4.0.0)</p>
         </div>
     </footer>
 
@@ -109,38 +91,23 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initProfiles, 500);
+            initProfilesPage();
         });
 
-        function initProfiles() {
-            document.getElementById('afk_msg1').value = localConfig.afk_msg1 || '';
-            document.getElementById('afk_msg2').value = localConfig.afk_msg2 || '';
-            
-            const afkEnabled = localConfig.afk_enabled === 'true';
-            document.getElementById('afkSwitch').className = 'toggle-switch' + (afkEnabled ? ' active' : '');
-
-            if (localConfig.token) fetchAndDisplayProfile(localConfig.token, 'acc1-profile-container');
-            if (localConfig.token2) fetchAndDisplayProfile(localConfig.token2, 'acc2-profile-container');
-        }
-
-        async function fetchAndDisplayProfile(token, containerId) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Loading Profile...</div>';
+        async function initProfilesPage() {
             try {
-                const r = await fetch(`/api/discord/me?token=${encodeURIComponent(token)}`);
-                if (r.ok) {
-                    const data = await r.json();
-                    if (data.id) {
-                        const avatarUrl = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : '/logo.png';
-                        container.innerHTML = `<div style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.1); padding:10px; border-radius:4px;"><img src="${avatarUrl}" style="width:32px; height:32px; border-radius:50%;"> <div><div style="font-size:14px; font-weight:bold;">${data.username}</div><div style="font-size:10px; color:rgba(255,255,255,0.5);">ID: ${data.id}</div></div></div>`;
-                    } else {
-                        container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Invalid Token configured in Settings.</div>';
-                    }
-                } else {
-                    container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Failed to load profile.</div>';
+                const res = await fetch('/api/config');
+                if (res.ok) {
+                    localConfig = await res.json();
                 }
-            } catch (e) {
-                container.innerHTML = `<div style="font-size:12px; color:#ff3333;">Error: ${e}</div>`;
+            } catch(e) { console.error(e); }
+
+            const afkEnabled = localConfig.afk_enabled === 'true';
+            const switchEl = document.getElementById('afkSwitch');
+            if (switchEl) switchEl.className = 'toggle-switch' + (afkEnabled ? ' active' : '');
+            
+            if (window.renderDynamicProfiles) {
+                renderDynamicProfiles();
             }
         }
 
@@ -151,14 +118,6 @@
             if (switchEl) switchEl.className = 'toggle-switch' + (localConfig.afk_enabled === 'true' ? ' active' : '');
             playSound(localConfig.afk_enabled === 'true' ? 'toggle-on' : 'toggle-off');
             pushConfig();
-        }
-
-        function saveProfilesSettings() {
-            playSound('click');
-            localConfig.afk_msg1 = document.getElementById('afk_msg1').value;
-            localConfig.afk_msg2 = document.getElementById('afk_msg2').value;
-            pushConfig();
-            showToast('PROFILES', 'AFK settings synchronized successfully.');
         }
     </script>
 </body>

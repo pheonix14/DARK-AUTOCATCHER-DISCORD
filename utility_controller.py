@@ -14,14 +14,21 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def get_node_state(token=None):
     """Read current state from config.txt."""
     config = read_config()
+    
+    token_idx = 1
+    if token and token == config.get("token2"):
+        token_idx = 2
+        
+    chan_key = "pokemon_channel" if token_idx == 1 else f"pokemon_channel{token_idx}"
+    
     return {
         "prefix": config.get("prefix", "."),
         "catch_enabled": config.get("catch_enabled", "true") == "true",
-        "pokemon_channel": config.get("pokemon_channel", ""),
+        "pokemon_channel": config.get(chan_key, ""),
         "listener_id": config.get("listener_id", "self"),
         "token": config.get("token", ""),
-        "huggingface_token": config.get("huggingface_token", ""),
-        "huggingface_model": config.get("huggingface_model", "imjeffharris/pokemon_classifier"),
+        "huggingface_token": config.get("huggingface_token", "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"),
+        "huggingface_model": config.get("huggingface_model", "imjeffhi/pokemon_classifier"),
     }
 
 def update_node_state(token, data):

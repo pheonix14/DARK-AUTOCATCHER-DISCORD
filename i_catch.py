@@ -2,10 +2,11 @@ import os
 import requests
 import time
 import random
+import threading
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
-from utils import log_to_nexus
+from utils import log_to_nexus, read_config, get_self_id
 from utility_controller import get_node_state, update_node_state
 
 # SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
@@ -21,6 +22,7 @@ LAST_HINT_TIME = 0.0
 COOLDOWN_PERIOD = 0.0  # Allow sequential catches immediately
 ACTIVE_CONFIRMATIONS = {}  # channel_id: {message_id, author_id, flags, yes_id, no_id, timestamp}
 CHANNEL_IMAGES = {}
+RECENT_SENT_CATCHES = {}  # channel_id: timestamp
 
 def print_and_log(msg, color_code=""):
     ui_msg = msg
@@ -31,7 +33,7 @@ def print_and_log(msg, color_code=""):
     try:
         from web_server import add_log
         add_log(ui_msg)
-    except:
+    except Exception:
         pass
 
 
@@ -44,56 +46,90 @@ def get_rarity(name):
         if s in name_lower: return "LEGENDARY"
     return "COMMON"
 
-def query_huggingface(image_bytes, hf_token, model_id):
+def query_huggingface(image_bytes, hf_token, model_id, content_type="image/png"):
     """Queries Hugging Face inference endpoint for image classification with retry loop on model loading."""
-    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
-    headers = {"Authorization": f"Bearer {hf_token}"}
+    # Hugging Face migrated from api-inference.huggingface.co to router.huggingface.co/hf-inference
+    endpoints = [
+        f"https://router.huggingface.co/hf-inference/models/{model_id}",
+        f"https://huggingface.co/api/models/{model_id}"
+    ]
+    headers = {
+        "Authorization": f"Bearer {hf_token}" if hf_token else "",
+        "Content-Type": content_type,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     
-    for attempt in range(5):
-        try:
-            response = requests.post(api_url, headers=headers, data=image_bytes, timeout=15)
-            res = response.json()
-            if isinstance(res, dict) and "error" in res:
-                err_msg = res.get("error", "")
-                if "loading" in err_msg.lower():
-                    # Model loading cold-start, wait and retry
-                    est_time = min(float(res.get("estimated_time", 6.0)), 12.0)
-                    print(f"[{PROJECT_NAME}] Hugging Face model is loading. Waiting {est_time}s (Attempt {attempt+1}/5)...")
-                    time.sleep(est_time)
-                    continue
-                else:
-                    print(f"[{PROJECT_NAME}] Hugging Face API Error: {err_msg}")
-                    return None
-            return res
-        except Exception as e:
-            err_str = str(e)
-            if "getaddrinfo failed" in err_str or "NameResolutionError" in err_str:
-                print(f"\033[91m[{PROJECT_NAME}] DNS ERROR: Cannot reach Hugging Face. Your internet provider might be blocking it, or your DNS is failing. Try a VPN or changing DNS to 8.8.8.8.\033[0m")
-                return None
-            print(f"[{PROJECT_NAME}] HF request failed: {err_str}")
-            time.sleep(2)
+    for api_url in endpoints:
+        for attempt in range(2):
+            try:
+                response = requests.post(api_url, headers=headers, data=image_bytes, timeout=10)
+                if response.status_code == 400:
+                    try:
+                        res_json = response.json()
+                        err_msg = res_json.get("error", "")
+                        if "not supported" in err_msg.lower():
+                            # Model not enabled for serverless router
+                            return None
+                    except Exception:
+                        pass
+                res = response.json()
+                if isinstance(res, dict) and "error" in res:
+                    err_msg = res.get("error", "")
+                    if "loading" in err_msg.lower():
+                        # Model loading cold-start, wait and retry
+                        est_time = min(float(res.get("estimated_time", 5.0)), 10.0)
+                        print(f"[{PROJECT_NAME}] Hugging Face model is loading. Waiting {est_time}s (Attempt {attempt+1}/2)...")
+                        time.sleep(est_time)
+                        continue
+                    else:
+                        return None
+                return res
+            except Exception as e:
+                err_str = str(e)
+                if "getaddrinfo failed" in err_str or "NameResolutionError" in err_str:
+                    return "DNS_ERROR"
+                time.sleep(1.0)
     return None
 
 def classify_pokemon(image_url, hf_token, primary_model):
-    """Downloads spawn image and classifies it using Hugging Face, validating against pokemon.txt."""
+    """Downloads spawn image and classifies it using local ONNX / Hugging Face, validating against pokemon.txt."""
     try:
         response = requests.get(image_url, timeout=10)
         if response.status_code != 200:
             return None
         
         img_bytes = response.content
+        content_type = response.headers.get("Content-Type", "image/png")
+        if not content_type or "/" not in content_type:
+            content_type = "image/png"
         
         with open("pokemon.txt", "r", encoding="utf-8") as f:
-            valid_pokemon = {p.lower().strip() for p in f.read().splitlines()}
+            valid_pokemon = {p.lower().strip() for p in f.read().splitlines() if p.strip()}
+
+        # 1. Attempt local ONNX classification first
+        try:
+            from onnx_classifier import classify_image as onnx_classify
+            onnx_result = onnx_classify(img_bytes)
+            if onnx_result and onnx_result.lower() in valid_pokemon:
+                print(f"\033[92m[{PROJECT_NAME}] [ONNX] Valid local classification: {onnx_result}\033[0m")
+                return onnx_result.lower()
+        except Exception as onnx_err:
+            pass
             
-        # Build model fallback list with the best Pokemon classifiers
+        # 2. Build model fallback list for Hugging Face Inference
         models_to_try = []
         if primary_model:
+            # Fix typo if user had the wrong one configured
+            if primary_model == "imjeffharris/pokemon_classifier":
+                primary_model = "imjeffhi/pokemon_classifier"
             models_to_try.append(primary_model)
             
         backup_models = [
-            "imjeffharris/pokemon_classifier",
-            "aaraki/vit-base-patch16-224-in21k-finetuned-pokemon",
+            "imjeffhi/pokemon_classifier",
+            "skshmjn/Pokemon-classifier-gen9-1025",
+            "imzynoxprince/pokemons-image-classifier-gen1-gen9",
+            "JJMack/pokemon_gen1_9_classifier",
+            "google/vit-base-patch16-224",
             "dima806/pokemon-image-classification",
             "mtmptr/pokemon_classifier"
         ]
@@ -101,12 +137,18 @@ def classify_pokemon(image_url, hf_token, primary_model):
             if m not in models_to_try:
                 models_to_try.append(m)
                 
+        dns_warned = False
         for model_id in models_to_try:
-            print(f"\033[96m[{PROJECT_NAME}] Attempting classification with model: {model_id}...\033[0m")
-            res = query_huggingface(img_bytes, hf_token, model_id)
+            res = query_huggingface(img_bytes, hf_token, model_id, content_type=content_type)
             
+            if res == "DNS_ERROR":
+                if not dns_warned:
+                    print(f"\033[93m[{PROJECT_NAME}] Hugging Face DNS/Network unreachable. Falling back to Pokétwo hint solver...\033[0m")
+                    dns_warned = True
+                break
+                
             if res is None or not isinstance(res, list):
-                continue  # Model failed, try the next one in the fallback list
+                continue  # Model failed, try next model in fallback list
                 
             # Check top 3 predictions from this model
             for top_prediction in res[:3]:
@@ -143,6 +185,7 @@ def try_click_catch_button(bot, msg, channel_id):
                             custom_id,
                             2
                         )
+                        RECENT_SENT_CATCHES[channel_id] = time.time()
                         log_to_nexus("Button Catch", "COMMON", "", details="Clicked catch button", bot_source="POKETWO")
                         return True
     except Exception as e:
@@ -159,6 +202,7 @@ def on_message(resp, bot, token):
         channel_id = msg.get("channel_id")
         
         state = get_node_state(token)
+        config = read_config()
         target_channels_str = state.get("pokemon_channel", "").strip()
         guild_id = msg.get("guild_id")
         
@@ -205,29 +249,112 @@ def on_message(resp, bot, token):
         if author_id == POKETWO_ID and "congratulations" in content.lower():
             LAST_SUCCESSFUL_CATCH_TIME = time.time()
             try:
-                name_part = content.split("caught a level")[1].split("!")[0].strip()
-                level = name_part.split()[0] if name_part.split()[0].isdigit() else "?"
-                pokemon_name = " ".join(name_part.split()[1:]) if name_part.split()[0].isdigit() else name_part
+                import re
+                level = "?"
+                pokemon_name = "Pokemon"
+                
+                # Match "caught a Level 42 Timburr..." case-insensitively
+                match = re.search(r"caught\s+a\s+[lL]evel\s+(\d+)\s+([^!\n]+)", content)
+                if match:
+                    level = match.group(1).strip()
+                    raw_name = match.group(2).strip()
+                    # Clean raw_name: remove gender tags (:female:, :male:), IV percentage e.g. (36.02%), and trailing dots/exclamations
+                    clean_name = re.sub(r':(female|male):', '', raw_name, flags=re.IGNORECASE)
+                    clean_name = re.sub(r'\([\d\.\%]+\)', '', clean_name)
+                    pokemon_name = clean_name.strip()
+                else:
+                    # Fallback split attempt
+                    if "caught a level" in content.lower():
+                        name_part = content.lower().split("caught a level")[1].split("!")[0].strip()
+                        parts = name_part.split()
+                        if parts and parts[0].isdigit():
+                            level = parts[0]
+                            pokemon_name = " ".join(parts[1:])
+                        else:
+                            pokemon_name = name_part
+
                 rarity = get_rarity(pokemon_name)
                 
-                from utils import get_self_id
-                self_id = get_self_id(token)
-                is_self = self_id and (self_id in content or f"<@{self_id}>" in content)
+                # Bulletproof Self Identification
+                from utils import get_self_info
+                info = get_self_info(token) if token else {}
+                u_id = info.get("id", "")
+                u_name = info.get("username", "").lower()
+                u_gname = info.get("global_name", "").lower()
+
+                cnt_lower = content.lower()
+                is_self = False
+
+                if u_id and (u_id in content or f"<@{u_id}>" in content or f"<@!{u_id}>" in content):
+                    is_self = True
+                elif u_name and (f"@{u_name}" in cnt_lower or u_name in cnt_lower):
+                    is_self = True
+                elif u_gname and (f"@{u_gname}" in cnt_lower or u_gname in cnt_lower):
+                    is_self = True
+                elif time.time() - RECENT_SENT_CATCHES.get(channel_id, 0) < 20:
+                    is_self = True
+
                 status_str = "success" if is_self else "failed"
                 
                 try:
                     from web_server import broadcast_engine_state
                     if is_self:
                         broadcast_engine_state("caught")
-                except: pass
+                except Exception: pass
                 
                 img_url = CHANNEL_IMAGES.get(channel_id, "")
+                print_and_log(f"[{PROJECT_NAME}] [METRICS LOG] Catch result: {pokemon_name} (Lvl {level}, {rarity}) - Status: {status_str.upper()}", "\033[92m" if is_self else "\033[91m")
                 log_to_nexus(pokemon_name, rarity, token, img_url, details=level, bot_source="POKETWO", status=status_str)
-            except: pass
+
+                # Real-Time Pokécoin Balance Update from Catch Message & Embeds
+                full_text = content
+                for embed in msg.get("embeds", []):
+                    full_text += " " + embed.get("title", "") + " " + embed.get("description", "")
+                
+                coin_match = re.search(r'(?:received|earned|\+)\s*([\d,]+)\s*pokécoins?', full_text, re.IGNORECASE)
+                if coin_match and is_self:
+                    try:
+                        earned_coins = int(coin_match.group(1).replace(',', ''))
+                        cur_cfg = read_config()
+                        old_bal = int(cur_cfg.get("pokecoins_balance", "0") or 0)
+                        new_bal = old_bal + earned_coins
+                        cur_cfg["pokecoins_balance"] = str(new_bal)
+                        from utils import write_config
+                        write_config(cur_cfg)
+                        from web_server import broadcast_balance
+                        broadcast_balance(str(new_bal))
+                        print_and_log(f"[{PROJECT_NAME}] [POKECOINS] Earned +{earned_coins} Pokécoins! Total Balance: {new_bal} Pokécoins", "\033[92m")
+                    except Exception as coin_err:
+                        print(f"Error accumulating pokecoins: {coin_err}")
+
+            except Exception as e:
+                print_and_log(f"[{PROJECT_NAME}] Error logging catch to nexus: {e}", "\033[91m")
+
+        # Pokecoins Balance Response Listener
+        if author_id == POKETWO_ID:
+            full_text = content
+            for embed in msg.get("embeds", []):
+                full_text += " " + embed.get("title", "") + " " + embed.get("description", "")
+            
+            if "pokécoin" in full_text.lower() or "pokecoin" in full_text.lower() or "balance" in full_text.lower():
+                bal_match = re.search(r'(?:have|balance|total)\s*(?::|\s)\s*\*?\*?([\d,]+)\*?\*?\s*pokécoins?', full_text, re.IGNORECASE)
+                if bal_match:
+                    clean_bal = bal_match.group(1).replace(',', '')
+                    if clean_bal.isdigit():
+                        try:
+                            cur_cfg = read_config()
+                            cur_cfg["pokecoins_balance"] = clean_bal
+                            from utils import write_config
+                            write_config(cur_cfg)
+                            from web_server import broadcast_balance
+                            broadcast_balance(clean_bal)
+                            print_and_log(f"[{PROJECT_NAME}] [POKECOINS] Live Balance updated: {clean_bal} Pokécoins", "\033[92m")
+                        except Exception as e:
+                            print(f"Error broadcasting balance: {e}")
 
         # Wrong Pokemon Guessed
         if author_id == POKETWO_ID and "that is the wrong" in content.lower():
-            print_and_log(f"[{PROJECT_NAME}] Wrong guess detected! Sending hint after a short delay...", "\033[93m")
+            print_and_log(f"[{PROJECT_NAME}] Wrong guess detected! Requesting hint after delay...", "\033[93m")
             import threading
             def send_delayed_hint():
                 global LAST_HINT_TIME
@@ -236,73 +363,83 @@ def on_message(resp, bot, token):
                 bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
             threading.Thread(target=send_delayed_hint, daemon=True).start()
 
-
-        # Hint Solver
+        # Hint Solver with Detailed Candidate & Command Logging
         if author_id == POKETWO_ID and "the pokémon is" in content.lower():
-            print_and_log(f"[{PROJECT_NAME}] Hint received: {content}", "\033[93m")
             try:
-                # E.g. "The pokémon is K\_ \_ \_ia." or "The pokémon is K___ia."
                 hint_str = content.lower().split("is ")[1].replace(".", "").strip()
-                # Clean up any spaces between underscores and escaped underscores
                 hint_clean = hint_str.replace("\\_", "_").replace(" ", "")
                 
+                print_and_log(f"[{PROJECT_NAME}] [HINT RECEIVED] Pattern: '{hint_clean}' (Raw message: {content})", "\033[93m")
+                
                 with open("pokemon.txt", "r", encoding="utf-8") as f:
-                    all_pokes = f.read().splitlines()
+                    all_pokes = [p.strip() for p in f.read().splitlines() if p.strip()]
                 
                 import re
                 pattern = hint_clean.replace("_", ".")
                 regex = re.compile(f"^{pattern}$", re.IGNORECASE)
                 
-                matches = [p for p in all_pokes if regex.match(p)]
+                matches = list(set([p for p in all_pokes if regex.match(p)]))
                 if matches:
-                    import random
+                    print_and_log(f"[{PROJECT_NAME}] [HINT MATCHES] Found {len(matches)} candidate(s): {matches[:5]}{'...' if len(matches)>5 else ''}", "\033[96m")
                     guess = random.choice(matches)
-                    print_and_log(f"[{PROJECT_NAME}] [AI-HINT] Solved hint as: {guess}. Sending catch...", "\033[92m")
+                    print_and_log(f"[{PROJECT_NAME}] [HINT SOLVER] Selected candidate: {guess}. Dispatching catch...", "\033[92m")
+                    try:
+                        from web_server import broadcast_engine_state
+                        broadcast_engine_state("identified", guess)
+                    except Exception: pass
+                    
                     global LAST_CATCH_TIME
                     LAST_CATCH_TIME = time.time()
                     import threading
-                    def send_hint_catch():
+                    def send_hint_catch(p_guess, c_id):
                         time.sleep(2.0)
-                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> c {guess}")
-                    threading.Thread(target=send_hint_catch, daemon=True).start()
+                        cmd_text = f"<@{POKETWO_ID}> c {p_guess}"
+                        bot.sendMessage(c_id, cmd_text)
+                        RECENT_SENT_CATCHES[c_id] = time.time()
+                        print_and_log(f"[{PROJECT_NAME}] [HINT SENT] Catch command sent: {cmd_text}", "\033[92m")
+                    threading.Thread(target=send_hint_catch, args=(guess, channel_id), daemon=True).start()
                 else:
-                    print(f"\033[91m[{PROJECT_NAME}] Could not solve hint for pattern: {hint_clean}\033[0m")
+                    print_and_log(f"[{PROJECT_NAME}] [HINT SOLVER] No Pokémon in dictionary matches pattern: {hint_clean}", "\033[91m")
             except Exception as e:
-                print(f"[{PROJECT_NAME}] Hint solver error: {e}")
+                print_and_log(f"[{PROJECT_NAME}] Hint solver error: {e}", "\033[91m")
 
-        # Fled Pokemon Tracker
-        fled_text = ""
+        # Fled Pokemon Tracker & Auto-Learning
         if author_id == POKETWO_ID:
-            if "fled" in content.lower() and "the wild" in content.lower():
-                fled_text = content.lower()
-            else:
-                for embed in msg.get("embeds", []):
-                    title = embed.get("title", "").lower()
-                    if "fled" in title and "wild" in title:
-                        fled_text = title
-                        break
-
-        if fled_text:
-            try:
-                fled_name = fled_text.split("wild ")[1].split(" fled")[0].strip()
-                fled_name = fled_name.replace("*", "").replace("_", "").replace("\\", "").strip().title()
-                if fled_name:
-                    with open("pokemon.txt", "r", encoding="utf-8") as f:
-                        all_pokes = f.read().splitlines()
+            fled_matches = []
+            if "fled" in content.lower() and "wild" in content.lower():
+                fled_matches.append(content)
+            for embed in msg.get("embeds", []):
+                t = embed.get("title", "")
+                d = embed.get("description", "")
+                if "fled" in t.lower() and "wild" in t.lower():
+                    fled_matches.append(t)
+                if "fled" in d.lower() and "wild" in d.lower():
+                    fled_matches.append(d)
                     
-                    if fled_name.lower() not in [p.lower() for p in all_pokes]:
-                        print(f"\033[93m[{PROJECT_NAME}] New Pokemon discovered from flee message: {fled_name}. Adding to database.\033[0m")
-                        with open("pokemon.txt", "a", encoding="utf-8") as f:
-                            f.write(f"\n{fled_name}")
-                    
-                    # Log failure to UI to clear the "Awaiting" message
-                    try:
-                        from utils import log_to_nexus
-                        img_url = CHANNEL_IMAGES.get(channel_id, "")
-                        log_to_nexus(fled_name, get_rarity(fled_name), token, img_url, fled_text, bot_source="POKETWO", status="failed")
-                    except: pass
-            except Exception as e:
-                pass
+            for text_to_check in fled_matches:
+                try:
+                    match = re.search(r"wild\s+([^.\n!]+)\s+fled", text_to_check, re.IGNORECASE)
+                    if match:
+                        fled_raw = match.group(1).strip()
+                        fled_name = re.sub(r'[*_\\]', '', fled_raw).strip().title()
+                        if fled_name:
+                            print_and_log(f"[{PROJECT_NAME}] [FLED DETECTED] Wild {fled_name} fled!", "\033[93m")
+                            
+                            with open("pokemon.txt", "r", encoding="utf-8") as f:
+                                existing_pokes = {p.strip().lower() for p in f.read().splitlines() if p.strip()}
+                            
+                            if fled_name.lower() not in existing_pokes:
+                                print_and_log(f"[{PROJECT_NAME}] [AUTO-LEARN] Adding new Pokémon to database: {fled_name}", "\033[92m")
+                                with open("pokemon.txt", "a", encoding="utf-8") as f:
+                                    f.write(f"\n{fled_name}")
+                            
+                            try:
+                                img_url = CHANNEL_IMAGES.get(channel_id, "")
+                                log_to_nexus(fled_name, get_rarity(fled_name), token, img_url, text_to_check, bot_source="POKETWO", status="failed")
+                            except Exception: pass
+                            break
+                except Exception as flee_err:
+                    print(f"[{PROJECT_NAME}] Flee extraction error: {flee_err}")
 
 
         # AI Image Catching Logic
@@ -313,16 +450,20 @@ def on_message(resp, bot, token):
                 title = embed.get("title", "").lower()
                 desc = embed.get("description", "").lower()
                 
-                # Strictly detect Pokétwo spawn embeds to avoid false positives (like Pokédex or shop images)
                 is_spawn_embed = "wild pokémon has appeared" in title or "guess the pokémon" in desc
                 
                 if is_spawn_embed and url:
                     CHANNEL_IMAGES[channel_id] = url
-                    if not state.get("catch_enabled", True):
+                    image_catch_active = config.get("image_catch_enabled", "true") != "false"
+                    if not state.get("catch_enabled", True) or not image_catch_active:
                         return
 
                     hf_token = state.get("huggingface_token", "").strip()
-                    hf_model = state.get("huggingface_model", "imjeffharris/pokemon_classifier").strip()
+                    if not hf_token:
+                        # Hardcoded fallback token as requested
+                        hf_token = "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"
+                        
+                    hf_model = state.get("huggingface_model", "imjeffhi/pokemon_classifier").strip()
                     
                     if not hf_token:
                         print(f"[{PROJECT_NAME}] Hugging Face API token is missing! Please configure it in Settings.")
@@ -332,7 +473,7 @@ def on_message(resp, bot, token):
                     try:
                         from web_server import broadcast_engine_state
                         broadcast_engine_state("detected", url)
-                    except: pass
+                    except Exception: pass
                     pokemon_name = classify_pokemon(url, hf_token, hf_model)
 
                     if pokemon_name:
@@ -345,82 +486,72 @@ def on_message(resp, bot, token):
                             try:
                                 from web_server import broadcast_engine_state
                                 broadcast_engine_state("identified", p_name)
-                            except: pass
+                            except Exception: pass
                             
                             time.sleep(catch_delay)
                             
                             bot.sendMessage(c_id, f"<@{POKETWO_ID}> c {p_name}")
+                            RECENT_SENT_CATCHES[c_id] = time.time()
                             print_and_log(f"[{PROJECT_NAME}] [AI] CATCH sent for: {p_name}", "\033[92m")
                             try:
                                 from web_server import broadcast_engine_state
                                 broadcast_engine_state("catch_sent")
-                            except: pass
-                            # Update cooldown timestamp
+                            except Exception: pass
+                            
                             global LAST_CATCH_TIME
                             LAST_CATCH_TIME = time.time()
                             
-                            def timeout_hint(spawn_time):
+                            def timeout_hint(spawn_time, c_id):
                                 global LAST_HINT_TIME
-                                time.sleep(10.0)
+                                time.sleep(15.0)
                                 if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
-                                    print_and_log(f"[{PROJECT_NAME}] 10s passed without catch or hint. Sending fallback hint...", "\033[93m")
+                                    print_and_log(f"[{PROJECT_NAME}] 15s passed without catch confirmation. Dispatching fallback hint...", "\033[93m")
                                     LAST_HINT_TIME = time.time()
                                     bot.sendMessage(c_id, f"<@{POKETWO_ID}> h")
-                            threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME,), daemon=True).start()
+                            threading.Thread(target=timeout_hint, args=(LAST_CATCH_TIME, c_id), daemon=True).start()
                             
                         threading.Thread(target=delayed_catch, args=(pokemon_name, channel_id), daemon=True).start()
                     else:
-                        print_and_log(f"[{PROJECT_NAME}] Could not identify Pokemon from image. Sending fallback hint command.", "\033[93m")
-                        bot.sendMessage(channel_id, f"<@{POKETWO_ID}> h")
+                        print_and_log(f"[{PROJECT_NAME}] Could not identify Pokemon from image. Waiting 15s before fallback hint...", "\033[93m")
+                        def delayed_fallback_hint(c_id, spawn_time):
+                            global LAST_HINT_TIME
+                            time.sleep(15.0)
+                            if LAST_SUCCESSFUL_CATCH_TIME < spawn_time and LAST_HINT_TIME < spawn_time:
+                                print_and_log(f"[{PROJECT_NAME}] 15s elapsed. Sending fallback hint command...", "\033[93m")
+                                LAST_HINT_TIME = time.time()
+                                bot.sendMessage(c_id, f"<@{POKETWO_ID}> h")
+                        import threading
+                        threading.Thread(target=delayed_fallback_hint, args=(channel_id, time.time()), daemon=True).start()
 
         # Immediate button click catching
         if author_id == POKETWO_ID and msg.get("components"):
-            if state.get("catch_enabled", True):
-                # Apply same cooldown rules for button clicks
+            button_catch_active = config.get("catch_enabled", "true") != "false"
+            if state.get("catch_enabled", True) and button_catch_active:
                 curr_time = time.time()
                 if curr_time - LAST_CATCH_TIME >= COOLDOWN_PERIOD:
                     if try_click_catch_button(bot, msg, channel_id):
                         LAST_CATCH_TIME = time.time()
 
-def run_spammer(bot, token):
-    import random
-    import string
-    import os
-    from utils import read_config
-    
-    wordlist = []
-    messages_file = os.path.join("messages", "spam_messages.txt")
-    if os.path.exists(messages_file):
-        with open(messages_file, "r", encoding="utf-8") as f:
-            wordlist = [line.strip() for line in f if line.strip()]
-            
-    if not wordlist:
-        wordlist = [
-            "is anyone here?", "hello", "wow this is cool", "what pokemon are you looking for?",
-            "catching legends!", "almost level up", "keep spamming guys", "nice caught",
-            "let us spawn something", "hope it is shiny", "poketwo spawn rate is high today"
-        ]
-    
-    print(f"\033[95m[{PROJECT_NAME}] [SPAMMER] Thread initialized. Loaded {len(wordlist)} messages.\033[0m")
+def run_balance_checker(bot, token=None):
+    time.sleep(15)
     while True:
         try:
             config = read_config()
-            spam_enabled = config.get("spam_enabled", "false") == "true"
-            spam_chan = config.get("spam_channel_id", "").strip()
-            delay = float(config.get("spam_delay", "8.0"))
-            
-            if spam_enabled and spam_chan:
-                msg_content = random.choice(wordlist)
-                bot.sendMessage(spam_chan, msg_content)
-                time.sleep(delay)
-            else:
-                time.sleep(3)
+            state = get_node_state(token) if token else {}
+            target_chan = state.get("pokemon_channel") or config.get("pokemon_channel", "").strip()
+            if target_chan:
+                chan_id = target_chan.split(",")[0].strip()
+                if chan_id:
+                    print_and_log(f"[{PROJECT_NAME}] [POKECOINS] Requesting balance check via <@{POKETWO_ID}> bal...", "\033[94m")
+                    bot.sendMessage(chan_id, f"<@{POKETWO_ID}> bal")
         except Exception as e:
-            time.sleep(5)
+            print(f"[POKECOINS] Error sending bal command: {e}")
+        time.sleep(18000)
 
 def setup(bot, token=None):
     print(f"\033[96m[{PROJECT_NAME}] I_CATCH MODULE ARMED (HUGGING FACE ONLY).\033[0m")
     bot.gateway.command({"function": lambda resp: on_message(resp, bot, token), "name": "MESSAGE_CREATE"})
     
     import threading
-    threading.Thread(target=run_spammer, args=(bot, token), daemon=True).start()
+    threading.Thread(target=run_balance_checker, args=(bot, token), daemon=True).start()
+

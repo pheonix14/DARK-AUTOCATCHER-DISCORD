@@ -24,6 +24,7 @@ html {
 body {
     background: #0a0a0a; /* Obsidian Dark */
     color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
     cursor: none;
@@ -572,6 +573,65 @@ nav.scrolled {
 
 .btn-ghost:hover::after {
     transform: translateX(6px)
+}
+
+/* ─── UNIFORM BUTTON SYSTEM ─── */
+.btn {
+    font-family: 'Bebas Neue', 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    background: transparent;
+    border: 1px solid var(--c1);
+    color: var(--c1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.btn:hover {
+    background: var(--c1);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(235, 34, 40, 0.4);
+}
+
+.btn-secondary {
+    border-color: var(--c2);
+    color: var(--c2);
+}
+
+.btn-secondary:hover {
+    background: var(--c2);
+    color: #000;
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.4);
+}
+
+.btn-danger {
+    border-color: #ff3333;
+    color: #ff3333;
+}
+
+.btn-danger:hover {
+    background: #ff3333;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
+}
+
+.btn-ghost-dark {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.btn-ghost-dark:hover {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
 /* scroll counter */
@@ -1231,7 +1291,7 @@ footer {
 }
 
 /* Base form elements */
-input[type="text"], input[type="password"], select {
+input[type="text"], input[type="password"], select, textarea {
     background: rgba(255,255,255,0.05);
     border: 1px solid rgba(255,255,255,0.1);
     color: #fff;
@@ -1242,6 +1302,7 @@ input[type="text"], input[type="password"], select {
     width: 100%;
     outline: none;
     transition: border-color 0.3s;
+    caret-color: var(--c1);
 }
 
 input[type="text"]:focus, input[type="password"]:focus, select:focus {

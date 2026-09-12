@@ -12,11 +12,14 @@ from .core_commands import (
 from .catcher_commands import handle_dark, handle_cooldown, handle_stop
 from .prompt_commands import handle_prompt_action
 from .premium_commands import handle_premium
+from .purge_commands import handle_purge
+from .history_command import handle_history
+from .channel_commands import handle_allow, handle_block
 
 def dispatch_command(cmd, args, content, prefix, state, token, channel_id, author_id, author_name, bot, update_state_func):
     """
     Routes incoming text command to the corresponding specialized command handler.
-    Returns: tuple (lines, card_title, text_msg)
+    Returns: tuple (lines, card_title, text_msg) or (lines, card_title, text_msg, components)
     """
     cmd = cmd.lower()
 
@@ -29,6 +32,15 @@ def dispatch_command(cmd, args, content, prefix, state, token, channel_id, autho
 
     elif cmd == "status":
         return handle_status(bot, token, channel_id, state)
+
+    elif cmd in ["history", "hist", "logs", "catches"]:
+        return handle_history(bot, token, channel_id, args, state)
+
+    elif cmd == "allow":
+        return handle_allow(bot, token, channel_id, args, state, update_state_func)
+
+    elif cmd == "block":
+        return handle_block(bot, token, channel_id, args, state, update_state_func)
 
     elif cmd == "prefix":
         return handle_prefix(bot, token, channel_id, state, args, update_state_func)
@@ -50,6 +62,9 @@ def dispatch_command(cmd, args, content, prefix, state, token, channel_id, autho
 
     elif cmd == "stop":
         return handle_stop(bot, token, channel_id, update_state_func, prefix)
+
+    elif cmd in ["purge", "purgeall"]:
+        return handle_purge(bot, token, channel_id, author_id, args, state)
 
     elif cmd in ["yes", "accept"]:
         return handle_prompt_action("yes", bot, channel_id, prefix)
@@ -73,16 +88,27 @@ def execute(content, prefix, state, token, channel_id, author_id, author_name, b
         return
 
     cmd = args[0]
-    lines, card_title, text_msg = dispatch_command(
+    res = dispatch_command(
         cmd, args, content, prefix, state, token, channel_id, author_id, author_name, bot, update_state_func
     )
+    
+    components = None
+    auto_delete_delay = 0
+    if len(res) == 5:
+        lines, card_title, text_msg, components, auto_delete_delay = res
+    elif len(res) == 4:
+        lines, card_title, text_msg, components = res
+    elif len(res) == 3:
+        lines, card_title, text_msg = res
+    else:
+        return
 
     if lines and card_title:
         try:
             # Generate premium glass card image
             file_path = generate_glass_card(card_title, lines)
-            # Send image file to Discord along with text content fallback
-            sent = send_image_to_discord(token, channel_id, file_path, content=text_msg if text_msg else "")
+            # Send image file to Discord WITHOUT duplicating text content (text_msg is only fallback)
+            sent = send_image_to_discord(token, channel_id, file_path, content="", components=components, auto_delete_delay=auto_delete_delay)
             
             # Fallback to plain text message if image sending fails
             if not sent and text_msg:

@@ -20,16 +20,31 @@ HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
+            entries = []
             with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: pass
+                content = f.read().strip()
+                if not content:
+                    return []
+                if content.startswith("["):
+                    return json.loads(content)
+                for line in content.splitlines():
+                    line_str = line.strip()
+                    if line_str:
+                        try:
+                            entries.append(json.loads(line_str))
+                        except Exception: pass
+            return entries
+        except Exception as e:
+            print(f"[HISTORY] Error loading history: {e}")
     return []
 
 def save_history():
     try:
         with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(STRUCTURED_LOGS, f)
-    except: pass
+            for entry in STRUCTURED_LOGS:
+                f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print(f"[HISTORY] Error saving history: {e}")
 
 STRUCTURED_LOGS = load_history()
 
@@ -81,6 +96,15 @@ def broadcast_engine_state(state, image_url=""):
     """Broadcast engine state to UI (detected, catch_sent, caught)"""
     _broadcast(json.dumps({"type": "engine_state", "data": state, "image_url": image_url}))
 
+def broadcast_balance(coins):
+    """Broadcast Pokecoins balance to UI and save to config."""
+    try:
+        config = read_config()
+        config["pokecoins_balance"] = str(coins)
+        write_config(config)
+    except: pass
+    _broadcast(json.dumps({"type": "balance_update", "data": str(coins)}))
+
 def _broadcast(message):
     global _loop
     if _loop and WS_CLIENTS:
@@ -103,12 +127,14 @@ async def _async_broadcast(message):
 async def _ws_handler(websocket):
     global WS_CLIENTS
     WS_CLIENTS.add(websocket)
-    add_log("Dashboard client connected. developed by pheonix14 (v3.0.0)")
+    add_log("Dashboard client connected. developed by pheonix14 (v4.0.0)")
+    add_log("⭐ Support the developer by checking out Premium! (/pages/premium.html)")
     try:
         config = read_config()
         await websocket.send(json.dumps({"type": "config", "data": config}))
         await websocket.send(json.dumps({"type": "logs", "data": LOGS[-50:]}))
         await websocket.send(json.dumps({"type": "structured_logs", "data": STRUCTURED_LOGS}))
+        await websocket.send(json.dumps({"type": "balance_update", "data": config.get("pokecoins_balance", "0")}))
 
         async for message in websocket:
             try:
@@ -161,6 +187,7 @@ def write_config(config_dict):
             for k, v in config_dict.items():
                 f.write(f"{k}={v}\n")
     except Exception as e:
+        print(f"[PROJECT DARK] [ERROR] Config write error: {e}")
         add_log(f"Config write error: {e}")
 
 # ── Watchdog — Monitor config.txt ────────────────────────────────────────────
@@ -195,87 +222,147 @@ def _start_watchdog():
 # ── HTTP Server — Serve pages/ and static assets ─────────────────────────────
 
 class DashboardHandler(http.server.SimpleHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_POST(self):
+        try:
+            if self.path == "/api/config":
+                try:
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    post_data = self.rfile.read(content_length)
+                    data = json.loads(post_data.decode('utf-8'))
+                    config = read_config()
+                    config.update(data)
+                    write_config(config)
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"status": "success", "config": config}).encode())
+                    return
+                except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+                    return
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header("Content-type", "application/json")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": str(e)}).encode())
+                    return
+        except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+            pass
+
     def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
-            self.send_response(200)
-            self.send_header("Content-type", "text/html; charset=utf-8")
-            self.end_headers()
-            try:
-                with open(INDEX_FILE, "r", encoding="utf-8") as f:
-                    self.wfile.write(f.read().encode("utf-8"))
-            except FileNotFoundError:
-                self.wfile.write(b"<h1>pages/index.html not found</h1>")
-        elif self.path == "/api/logs":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(json.dumps(LOGS[-50:]).encode())
-        elif self.path == "/api/config":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(json.dumps(read_config()).encode())
-        elif self.path.startswith("/api/discord/user?id="):
-            user_id = self.path.split("=")[1]
-            token = read_config().get("token", "")
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            try:
-                import requests
-                r = requests.get(f"https://discord.com/api/v9/users/{user_id}", headers={"Authorization": token}, timeout=5)
-                self.wfile.write(r.content)
-            except Exception as e:
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-        elif self.path.startswith("/api/discord/me"):
-            # Supports /api/discord/me?token=...
-            from urllib.parse import urlparse, parse_qs
-            query = parse_qs(urlparse(self.path).query)
-            token = query.get("token", [""])[0]
-            if not token:
+        try:
+            if self.path == "/" or self.path == "/index.html":
+                self.send_response(200)
+                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.end_headers()
+                try:
+                    with open(INDEX_FILE, "r", encoding="utf-8") as f:
+                        self.wfile.write(f.read().encode("utf-8"))
+                except FileNotFoundError:
+                    self.wfile.write(b"<h1>pages/index.html not found</h1>")
+            elif self.path == "/api/logs":
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(LOGS[-50:]).encode())
+            elif self.path == "/api/config":
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(read_config()).encode())
+            elif self.path.startswith("/api/discord/user?id="):
+                user_id = self.path.split("=")[1]
                 token = read_config().get("token", "")
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                try:
+                    import requests
+                    r = requests.get(f"https://discord.com/api/v9/users/{user_id}", headers={"Authorization": token}, timeout=5)
+                    self.wfile.write(r.content)
+                except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                except Exception as e:
+                    self.wfile.write(json.dumps({"error": str(e)}).encode())
+            elif self.path.startswith("/api/discord/me"):
+                # Supports /api/discord/me?token=...
+                from urllib.parse import urlparse, parse_qs
+                query = parse_qs(urlparse(self.path).query)
+                token = query.get("token", [""])[0]
+                if not token:
+                    token = read_config().get("token", "")
+                    
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                try:
+                    import requests
+                    r = requests.get("https://discord.com/api/v9/users/@me", headers={"Authorization": token}, timeout=5)
+                    self.wfile.write(r.content)
+                except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                except Exception as e:
+                    self.wfile.write(json.dumps({"error": str(e)}).encode())
+            elif self.path.startswith("/api/discord/guilds"):
+                from urllib.parse import urlparse, parse_qs
+                query = parse_qs(urlparse(self.path).query)
+                token = query.get("token", [""])[0]
+                if not token:
+                    token = read_config().get("token", "")
+                    
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                try:
+                    import requests
+                    r = requests.get("https://discord.com/api/v9/users/@me/guilds", headers={"Authorization": token}, timeout=5)
+                    self.wfile.write(r.content)
+                except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                except Exception as e:
+                    self.wfile.write(json.dumps({"error": str(e)}).encode())
+            elif self.path.startswith("/api/discord/channels"):
+                from urllib.parse import urlparse, parse_qs
+                query = parse_qs(urlparse(self.path).query)
+                token = query.get("token", [""])[0]
+                if not token:
+                    token = read_config().get("token", "")
                 
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            try:
-                import requests
-                r = requests.get("https://discord.com/api/v9/users/@me", headers={"Authorization": token}, timeout=5)
-                self.wfile.write(r.content)
-            except Exception as e:
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-        elif self.path == "/api/discord/guilds":
-            token = read_config().get("token", "")
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            try:
-                import requests
-                r = requests.get("https://discord.com/api/v9/users/@me/guilds", headers={"Authorization": token}, timeout=5)
-                self.wfile.write(r.content)
-            except Exception as e:
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-        elif self.path.startswith("/api/discord/channels?guild_id="):
-            guild_id = self.path.split("=")[1]
-            token = read_config().get("token", "")
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            try:
-                import requests
-                r = requests.get(f"https://discord.com/api/v9/guilds/{guild_id}/channels", headers={"Authorization": token}, timeout=5)
-                self.wfile.write(r.content)
-            except Exception as e:
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
-        else:
-            self.directory = BASE_DIR
-            super().do_GET()
+                # Extract guild_id safely
+                guild_id = query.get("guild_id", [""])[0]
+                if not guild_id and "=" in self.path:
+                    guild_id = self.path.split("=")[1].split("&")[0]
+
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                try:
+                    import requests
+                    r = requests.get(f"https://discord.com/api/v9/guilds/{guild_id}/channels", headers={"Authorization": token}, timeout=5)
+                    self.wfile.write(r.content)
+                except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+                    pass
+                except Exception as e:
+                    self.wfile.write(json.dumps({"error": str(e)}).encode())
+            else:
+                self.directory = BASE_DIR
+                super().do_GET()
+        except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError, OSError):
+            pass
 
     def log_message(self, format, *args):
         pass

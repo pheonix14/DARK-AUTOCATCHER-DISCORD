@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT DARK v3.0.0 — Home</title>
+    <title>PROJECT DARK v4.0.0 — Home</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/common/style.css">
     <style>
@@ -55,8 +55,13 @@
                 <p class="hero-eyebrow">◈ Dashboard — Overview</p>
                 <h1 class="hero-h1" style="margin-bottom:0;">POKÉDEX<br><em>ENGINE</em></h1>
             </div>
-            <div id="hero-img-container" style="width:384px; height:384px; position:absolute; right:10%; top:50%; transform:translateY(-50%); display:flex; justify-content:center; align-items:center; overflow:visible; transition:all 0.5s; pointer-events:none; z-index: 20;">
-                <img id="hero-detected-img" src="" style="max-width:100%; max-height:100%; object-fit:contain; display:none; transition: filter 0.5s;">
+            <div id="hero-img-container" style="width:384px; height:384px; position:absolute; right:10%; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:visible; transition:all 0.5s; pointer-events:none; z-index: 20;">
+                <div id="hero-pokemon-bg" style="position:absolute; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle, rgba(0,243,255,0.25) 0%, rgba(138,43,226,0.15) 50%, rgba(0,0,0,0) 75%); border:1px solid rgba(0,243,255,0.3); filter:drop-shadow(0 0 25px rgba(0,243,255,0.4)); z-index:-1; transition:all 0.5s;"></div>
+                <img id="hero-detected-img" src="" style="max-width:85%; max-height:85%; object-fit:contain; display:none; transition: filter 0.5s;">
+                <div id="hero-detected-name" style="font-family:'Bebas Neue'; font-size:32px; color:var(--c1); text-shadow:0 0 20px rgba(0,0,0,0.8); margin-top:10px; text-transform:uppercase; letter-spacing:2px; display:none;"></div>
+                <div id="hero-rare-caught-container" style="margin-top:5px; font-family:'Space Grotesk'; font-size:13px; color:#ffd700; font-weight:700; background:rgba(0,0,0,0.6); padding:4px 12px; border-radius:20px; border:1px solid #ffd700; display:none;">
+                    ★ RARE CAUGHT: <span id="hero-rare-count">0</span>
+                </div>
             </div>
         </div>
         
@@ -94,29 +99,33 @@
                 
                 <div style="display:flex; justify-content:space-between; margin-top:10px;">
                     <div>
-                        <div style="color:var(--c1); font-weight:700; font-size:12px;">Successful Catches</div>
-                        <div id="metric-success" style="font-family:'Bebas Neue'; font-size:48px; color:#fff;">0</div>
+                        <div style="color:var(--c1); font-weight:700; font-size:12px;">Successful</div>
+                        <div id="metric-success" style="font-family:'Bebas Neue'; font-size:40px; color:#fff;">0</div>
                     </div>
                     <div>
-                        <div style="color:var(--c2); font-weight:700; font-size:12px;">Failed / Fled</div>
-                        <div id="metric-failed" style="font-family:'Bebas Neue'; font-size:48px; color:#fff;">0</div>
+                        <div style="color:var(--c2); font-weight:700; font-size:12px;">Failed/Fled</div>
+                        <div id="metric-failed" style="font-family:'Bebas Neue'; font-size:40px; color:#fff;">0</div>
                     </div>
                     <div>
-                        <div style="color:rgba(255,255,255,0.5); font-weight:700; font-size:12px;">Success Ratio</div>
-                        <div id="metric-ratio" style="font-family:'Bebas Neue'; font-size:48px; color:#fff;">0%</div>
+                        <div style="color:#ffd700; font-weight:700; font-size:12px;">Rare/Shiny</div>
+                        <div id="metric-rare" style="font-family:'Bebas Neue'; font-size:40px; color:#ffd700;">0</div>
+                    </div>
+                    <div>
+                        <div style="color:rgba(255,255,255,0.5); font-weight:700; font-size:12px;">Ratio</div>
+                        <div id="metric-ratio" style="font-family:'Bebas Neue'; font-size:40px; color:#fff;">0%</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Promo -->
-            <div class="card" style="cursor:pointer;" onclick="window.location.href='/pages/premium.html'">
-                <div class="card-num">PROMO</div>
-                <div class="card-icon">◎</div>
-                <h3 style="color:var(--c2);">LIMITED LICENSE 50% OFF</h3>
-                <p id="promo-text-holder">Secure full code access before neural node classifier updates release.</p>
-                <div style="display:flex; justify-content:space-between; margin-top:20px; align-items:center;">
-                    <span style="font-size:12px; color:rgba(255,255,255,0.5);">Expires in:</span>
-                    <span id="scarcity-countdown" style="font-family:'Bebas Neue'; font-size:24px; color:var(--c1);">14m 32s</span>
+            <!-- Pokecoins Vault -->
+            <div class="card">
+                <div class="card-num">VAULT</div>
+                <div class="card-icon">🪙</div>
+                <h3 style="color:#ffd700;">POKÉCOINS BALANCE</h3>
+                <p style="color:rgba(255,255,255,0.5); font-size:12px; margin-bottom:5px;">Auto-synced every 5 hours via Pokétwo</p>
+                <div style="display:flex; align-items:baseline; margin-top:10px;">
+                    <div id="metric-pokecoins" style="font-family:'Bebas Neue'; font-size:48px; color:#ffd700; text-shadow:0 0 15px rgba(255,215,0,0.3);">0</div>
+                    <span style="font-size:14px; font-weight:700; color:rgba(255,255,255,0.7); margin-left:8px;">POKÉCOINS</span>
                 </div>
             </div>
         </div>
@@ -134,7 +143,7 @@
             </ul>
         </div>
         <div class="footer-bottom">
-            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v4.0.0)</p>
             <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
         </div>
     </footer>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PROJECT DARK v3.0.0 — Pokédex Settings</title>
+    <title>PROJECT DARK v4.0.0 — Pokédex Settings</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,900;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/common/style.css">
 </head>
@@ -80,34 +80,15 @@
                     <input type="text" id="prefix" placeholder="." maxlength="3">
                 </div>
                 
-                <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c1);">Default Channels / Servers</label>
-                    <input type="text" id="pokemon_channel" placeholder="Selected Channel IDs (comma separated)">
-                    <button class="btn" style="width:100%; border-color:rgba(255,255,255,0.2); font-size:12px; padding:10px; margin-top:10px;" onclick="loadDiscordServers('pokemon_channel', 'discord-servers-container')">Fetch Discord Servers</button>
-                    <div id="discord-servers-container" style="margin-top:10px; max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:4px; display:none; flex-direction:column; gap:10px;">
-                        <!-- Fetched servers and channels go here -->
-                    </div>
-                    <div style="font-family:'Space Grotesk'; font-size:10px; color:rgba(255,255,255,0.5); margin-top:5px;">Max 5 servers and 10 channels. Checked items will be saved.</div>
-                </div>
             </div>
 
             <!-- Credentials -->
             <div class="card">
                 <div class="card-num">CFG_2</div>
                 <div class="card-icon">◎</div>
-                <h3 style="color:var(--c2);">Credentials & API</h3>
-                <p style="margin-bottom:20px;">Discord and Hugging Face Authentication.</p>
-                
-                <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Discord Account 1 Token</label>
-                    <input type="text" id="token" placeholder="Paste Discord Account 1 Token" onblur="loadBotProfile('token', 'profile1')">
-                    <div id="profile1" style="margin-top:10px;"></div>
-                </div>
-                <div class="form-group">
-                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Discord Account 2 Token (Optional)</label>
-                    <input type="text" id="token2" placeholder="Paste Discord Account 2 Token" onblur="loadBotProfile('token2', 'profile2')">
-                    <div id="profile2" style="margin-top:10px;"></div>
-                </div>
+                <h3 style="color:var(--c2);">Credentials & Accounts</h3>
+                <p style="margin-bottom:20px;">Hugging Face API Configuration.</p>
+
                 <div class="form-group">
                     <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Hugging Face Token</label>
                     <input type="text" id="huggingface_token" placeholder="hf_xxxxxxxxxxxxxx">
@@ -116,31 +97,62 @@
                     <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:var(--c2);">Vision Model ID</label>
                     <input type="text" id="huggingface_model" placeholder="imjeffharris/pokemon_classifier">
                 </div>
-
-                <button class="btn" style="width:100%; margin-top:10px; border-color:var(--c2); color:var(--c2);" onclick="saveCredentialsSettings()">Save Credentials</button>
             </div>
 
-            <!-- Auto-Spammer -->
+            <!-- Automation & Engines -->
             <div class="card">
                 <div class="card-num">CFG_3</div>
                 <div class="card-icon">⬡</div>
-                <h3 style="color:#ff3333;">Auto-Spammer</h3>
-                <p style="margin-bottom:20px; color:rgba(255,255,255,0.5);">Periodic message dispatch.</p>
+                <h3 style="color:#ff3333;">Automation & Engines</h3>
+                <p style="margin-bottom:20px; color:rgba(255,255,255,0.5);">Auto-catcher, Image Classifier & Spawner controls.</p>
                 
                 <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Enable Button Catcher</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Auto-click Pokétwo Catch Buttons</span>
+                    </div>
+                    <div class="toggle-switch active" id="catchSwitch" onclick="toggleCatcher()"></div>
+                </div>
+
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Enable Image Catcher</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">AI Image Classification Catching Engine</span>
+                    </div>
+                    <div class="toggle-switch active" id="imageCatchSwitch" onclick="toggleImageCatcher()"></div>
+                </div>
+
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <div>
                         <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700;">Enable Spammer</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Periodic message spawner</span>
                     </div>
                     <div class="toggle-switch" id="spamSwitch" onclick="toggleSpammer()"></div>
+                </div>
+
+                <div class="row-switch" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px;">
+                    <div>
+                        <span style="display:block; font-family:'Space Grotesk'; font-size:14px; font-weight:700; color:#ffcc00;">∞ Infinity Count Toggle</span>
+                        <span style="font-family:'Space Grotesk'; font-size:11px; color:rgba(255,255,255,0.5);">Spam infinitely without stopping</span>
+                    </div>
+                    <div class="toggle-switch" id="spamInfinitySwitch" onclick="toggleSpamInfinity()"></div>
                 </div>
 
                 <div class="form-group">
                     <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Target Channel IDs</label>
                     <input type="text" id="spam_channel_id" placeholder="Channel IDs (comma separated)">
-                    <button class="btn" style="width:100%; border-color:rgba(255,255,255,0.2); font-size:12px; padding:10px; margin-top:10px;" onclick="loadDiscordServers('spam_channel_id', 'spam-discord-servers-container')">Fetch Discord Servers</button>
+                    <button class="btn btn-ghost-dark" style="width:100%; margin-top:10px;" onclick="loadDiscordServers('spam_channel_id', 'spam-discord-servers-container')">Fetch Discord Servers</button>
                     <div id="spam-discord-servers-container" style="margin-top:10px; max-height:250px; overflow-y:auto; border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:4px; display:none; flex-direction:column; gap:10px;">
                         <!-- Fetched servers and channels go here -->
                     </div>
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Custom Spam Message(s)</label>
+                    <input type="text" id="spam_custom_message" placeholder="Custom text or comma-separated list (Leave blank for default dictionary)">
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Message Count Limit (Ignored if Infinity is ON)</label>
+                    <input type="text" id="spam_count" placeholder="0 for unlimited count">
                 </div>
                 <div class="form-group">
                     <label style="display:block; font-family:'Space Grotesk'; font-size:12px; margin-bottom:5px; color:#ff3333;">Spam Delay (Seconds)</label>
@@ -149,6 +161,12 @@
                 </div>
             </div>
         </div>
+
+        <div style="margin-top:30px; display:flex; justify-content:center; gap:15px; flex-wrap:wrap;">
+            <button class="btn btn-primary" style="flex:1; max-width:400px; padding:15px 30px; font-size:16px; letter-spacing:2px; font-family:'Bebas Neue';" onclick="saveCredentialsSettings()">SAVE ALL SETTINGS</button>
+            <button class="btn" style="flex:1; max-width:400px; padding:15px 30px; font-size:16px; letter-spacing:2px; font-family:'Bebas Neue'; border-color:var(--c2); color:var(--c2);" onclick="window.location.href='/pages/profiles.html'">CONFIGURE PROFILES</button>
+        </div>
+    </section>
     </section>
 
     <!-- FOOTER -->
@@ -163,7 +181,7 @@
             </ul>
         </div>
         <div class="footer-bottom">
-            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v3.0.0)</p>
+            <p class="footer-copy">© 2025 PROJECT DARK — dev by pheonix14 (v4.0.0)</p>
             <p class="footer-copy" id="bgCredit">Background: Engine Base</p>
         </div>
     </footer>

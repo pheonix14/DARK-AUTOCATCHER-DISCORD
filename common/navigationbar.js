@@ -1,5 +1,5 @@
 /**
- * PROJECT DARK v3.0.0
+ * PROJECT DARK v4.0.0
  * Developed by pheonix14
  * Pokémon 3-Color Theme Header Navigation Component
  */
@@ -15,6 +15,7 @@ function renderNavigationBar() {
                 <li><a href="/pages/index.html" data-symbol="◈">Home</a></li>
                 <li><a href="/pages/history.html" data-symbol="◉">Caught</a></li>
                 <li><a href="/pages/settings.html" data-symbol="◫">Settings</a></li>
+                <li><a href="/pages/profiles.html" data-symbol="◇">Profiles</a></li>
                 <li><a href="/pages/premium.html" data-symbol="◎">Premium</a></li>
             </ul>
             <div class="nav-right">
