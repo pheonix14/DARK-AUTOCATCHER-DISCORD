@@ -547,6 +547,14 @@
             pointer-events: auto;
         }
 
+        /* Desktop Layout Optimization */
+        @media (min-width: 1024px) {
+            .burger-menu-icon { display: none !important; }
+            .left-sidebar-menu { left: 0 !important; box-shadow: none !important; }
+            .sidebar-overlay { display: none !important; }
+            .app-container { padding-left: 280px !important; max-width: 100% !important; }
+        }
+
         /* Page animations */
         .section { display: none; }
         .section.active {
