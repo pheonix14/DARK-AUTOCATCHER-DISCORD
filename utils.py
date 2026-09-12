@@ -73,8 +73,8 @@ def is_authorized(user_id, token=None):
     else:
         # Custom listener IDs (comma-separated)
         allowed = [i.strip() for i in listener_id.split(",") if i.strip()]
-        # Also include self if it's in the list
-        if self_id:
+        # Also include self if it's explicitly in the list
+        if "self" in allowed and self_id:
             allowed.append(self_id)
         return user_id in allowed
 

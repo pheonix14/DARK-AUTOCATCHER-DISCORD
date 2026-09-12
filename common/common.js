@@ -195,7 +195,14 @@ function renderConfigToInputs() {
     setVal('spam_channel_id', localConfig.spam_channel_id);
     setVal('spam_delay', localConfig.spam_delay || '45.0');
     
-    setVal('listener_id', localConfig.listener_id || 'self');
+    let listenerRaw = localConfig.listener_id || 'self';
+    let listenerIds = listenerRaw.split(',').map(s => s.trim()).filter(s => s);
+    selfListenEnabled = listenerIds.includes('self');
+    const restrictSwitch = document.getElementById('restrictSwitch');
+    if (restrictSwitch) restrictSwitch.className = 'toggle-switch' + (selfListenEnabled ? ' active' : '');
+    
+    let otherIds = listenerIds.filter(s => s !== 'self');
+    setVal('listener_id', otherIds.join(', '));
     loadUserProfiles();
     
     notificationsEnabled = localConfig.notifications_enabled === 'true';
@@ -446,13 +453,31 @@ function updateNotifyToggle() {
     pushConfig();
 }
 
+let selfListenEnabled = false;
+
+function toggleRestrictSelf() {
+    selfListenEnabled = !selfListenEnabled;
+    const switchEl = document.getElementById('restrictSwitch');
+    if (switchEl) switchEl.className = 'toggle-switch' + (selfListenEnabled ? ' active' : '');
+    playSound(selfListenEnabled ? 'toggle-on' : 'toggle-off');
+    
+    const input = document.getElementById('listener_id');
+    let ids = input ? input.value.trim().split(',').map(s => s.trim()).filter(s => s && s !== 'self') : [];
+    
+    let configIds = [...ids];
+    if (selfListenEnabled) configIds.unshift('self');
+    
+    localConfig.listener_id = configIds.join(',');
+    pushConfig();
+}
+
 async function loadUserProfiles() {
     const input = document.getElementById('listener_id');
     const container = document.getElementById('user-profiles-container');
     if (!input || !container) return;
     
     let rawStr = input.value.trim();
-    let ids = rawStr.split(',').map(s => s.trim()).filter(s => s);
+    let ids = rawStr.split(',').map(s => s.trim()).filter(s => s && s !== 'self');
     
     if (ids.length > 3) {
         showToast('SYSTEM', 'Maximum 3 users allowed.');
@@ -460,17 +485,21 @@ async function loadUserProfiles() {
         input.value = ids.join(', ');
     }
     
-    localConfig.listener_id = ids.join(',');
+    let configIds = [...ids];
+    if (selfListenEnabled) configIds.unshift('self');
+    
+    localConfig.listener_id = configIds.join(',');
     pushConfig();
+    
+    if (ids.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
     
     container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Loading...</div>';
     
     let html = '';
     for (let uid of ids) {
-        if (uid === 'self') {
-            html += `<div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.1); padding:5px 10px; border-radius:4px;"><img src="/logo.png" style="width:24px; height:24px; border-radius:50%;"> <span style="font-size:12px;">Self (Bot)</span></div>`;
-            continue;
-        }
         try {
             const r = await fetch(`/api/discord/user?id=${uid}`);
             if (r.ok) {
