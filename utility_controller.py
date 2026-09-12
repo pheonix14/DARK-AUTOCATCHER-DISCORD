@@ -61,7 +61,33 @@ def on_message(resp, bot, token):
         author_id = author.get("id")
         author_name = author.get("username", "Unknown")
         channel_id = msg.get("channel_id")
+        guild_id = msg.get("guild_id")
         content = msg.get("content", "").strip()
+        
+        # ── AFK Auto-Responder ──
+        config = read_config()
+        if config.get("afk_enabled", "false") == "true" and not guild_id:
+            try:
+                bot_id = bot.gateway.session.user.get('id')
+                if bot_id and author_id != bot_id:
+                    token1 = config.get("token", "")
+                    token2 = config.get("token2", "")
+                    afk_msg = ""
+                    if token == token1: afk_msg = config.get("afk_msg1", "")
+                    elif token == token2: afk_msg = config.get("afk_msg2", "")
+                    
+                    if afk_msg:
+                        # Prevent loops/spam (once per 5 mins per user)
+                        global AFK_COOLDOWNS
+                        if 'AFK_COOLDOWNS' not in globals():
+                            AFK_COOLDOWNS = {}
+                        last_afk = AFK_COOLDOWNS.get(author_id, 0)
+                        if time.time() - last_afk > 300:
+                            bot.sendMessage(channel_id, afk_msg)
+                            AFK_COOLDOWNS[author_id] = time.time()
+                            from web_server import add_log
+                            add_log(f"[{bot_id[:5]}...] AFK auto-responded to DM from {author_name}")
+            except Exception: pass
         
         state = get_node_state(token)
         prefix = state.get("prefix", ".")

@@ -192,6 +192,14 @@ function handleEngineState(state, imageUrl) {
         imgEl.style.filter = 'drop-shadow(0 0 30px var(--c1))';
     } else if (state === 'caught') {
         imgEl.style.filter = 'drop-shadow(0 0 40px #00ff00)';
+        if (notificationsEnabled && Notification.permission === 'granted') {
+            try {
+                new Notification('PROJECT DARK', {
+                    body: `Catch attempt complete!`,
+                    icon: imgEl.src || '/logo.png'
+                });
+            } catch(e) { console.error(e); }
+        }
     } else if (state === 'reset') {
         imgEl.style.display = 'none';
         imgEl.style.filter = 'none';
@@ -431,12 +439,14 @@ function saveCredentialsSettings() {
     };
 
     const token = getVal('token');
+    const token2 = getVal('token2');
     const hfToken = getVal('huggingface_token');
     const hfModel = getVal('huggingface_model');
     const prefix = getVal('prefix');
     const pokeChannel = getVal('pokemon_channel');
 
     if (token !== null) localConfig.token = token;
+    if (token2 !== null) localConfig.token2 = token2;
     if (hfToken !== null) localConfig.huggingface_token = hfToken;
     if (hfModel !== null) localConfig.huggingface_model = hfModel;
     if (prefix !== null) localConfig.prefix = prefix || '.';
@@ -538,9 +548,14 @@ async function loadUserProfiles() {
 let loadedGuilds = [];
 let checkedGuilds = [];
 let checkedChannels = [];
+let activeTargetInput = '';
+let activeTargetContainer = '';
 
-async function loadDiscordServers() {
-    const container = document.getElementById('discord-servers-container');
+async function loadDiscordServers(inputId, containerId) {
+    activeTargetInput = inputId;
+    activeTargetContainer = containerId;
+    
+    const container = document.getElementById(containerId);
     if (!container) return;
     
     container.style.display = 'flex';
@@ -563,11 +578,12 @@ async function loadDiscordServers() {
 }
 
 function renderServersUI() {
-    const container = document.getElementById('discord-servers-container');
+    const container = document.getElementById(activeTargetContainer);
     if (!container) return;
     
     // Parse existing selections from config
-    const currentList = (localConfig.pokemon_channel || '').split(',').map(s => s.trim()).filter(s => s);
+    const currentVal = document.getElementById(activeTargetInput).value || localConfig[activeTargetInput] || '';
+    const currentList = currentVal.split(',').map(s => s.trim()).filter(s => s);
     checkedGuilds = [];
     checkedChannels = [];
     currentList.forEach(id => {
@@ -673,9 +689,38 @@ function toggleChannel(channelId) {
 
 function saveChannelsToConfig() {
     const combined = [...checkedGuilds, ...checkedChannels].join(',');
-    localConfig.pokemon_channel = combined;
-    document.getElementById('pokemon_channel').value = combined;
+    localConfig[activeTargetInput] = combined;
+    document.getElementById(activeTargetInput).value = combined;
     pushConfig();
+}
+
+async function loadBotProfile(tokenId, containerId) {
+    const token = document.getElementById(tokenId).value.trim();
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (!token) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = '<div style="font-size:12px; color:var(--c1);">Loading Profile...</div>';
+    try {
+        const r = await fetch(`/api/discord/me?token=${encodeURIComponent(token)}`);
+        if (r.ok) {
+            const data = await r.json();
+            if (data.id) {
+                const avatarUrl = data.avatar ? `https://cdn.discordapp.com/avatars/${data.id}/${data.avatar}.png` : '/logo.png';
+                container.innerHTML = `<div style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.1); padding:10px; border-radius:4px;"><img src="${avatarUrl}" style="width:32px; height:32px; border-radius:50%;"> <div><div style="font-size:14px; font-weight:bold;">${data.username}</div><div style="font-size:10px; color:rgba(255,255,255,0.5);">ID: ${data.id}</div></div></div>`;
+            } else {
+                container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Invalid Token</div>';
+            }
+        } else {
+            container.innerHTML = '<div style="font-size:12px; color:#ff3333;">Failed to load profile.</div>';
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="font-size:12px; color:#ff3333;">Error: ${e}</div>`;
+    }
 }
 
 function toggleSpammer() {

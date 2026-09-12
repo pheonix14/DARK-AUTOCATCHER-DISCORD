@@ -230,6 +230,24 @@ class DashboardHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(r.content)
             except Exception as e:
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
+        elif self.path.startswith("/api/discord/me"):
+            # Supports /api/discord/me?token=...
+            from urllib.parse import urlparse, parse_qs
+            query = parse_qs(urlparse(self.path).query)
+            token = query.get("token", [""])[0]
+            if not token:
+                token = read_config().get("token", "")
+                
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                import requests
+                r = requests.get("https://discord.com/api/v9/users/@me", headers={"Authorization": token}, timeout=5)
+                self.wfile.write(r.content)
+            except Exception as e:
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         elif self.path == "/api/discord/guilds":
             token = read_config().get("token", "")
             self.send_response(200)

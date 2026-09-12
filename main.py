@@ -137,6 +137,11 @@ def main_worker():
     web_server.add_log(f"Token detected. Launching Pokétwo engine...")
     threading.Thread(target=start_instance, args=(token,), daemon=True).start()
     
+    token2 = config.get("token2", "").strip()
+    if token2 and token2 != "YOUR_TOKEN_HERE":
+        web_server.add_log(f"Secondary token detected. Launching Pokétwo engine...")
+        threading.Thread(target=start_instance, args=(token2,), daemon=True).start()
+    
     try:
         while True:
             time.sleep(1)
