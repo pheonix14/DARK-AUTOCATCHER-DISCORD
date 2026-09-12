@@ -134,6 +134,13 @@ def on_message(resp, bot, token):
         content = msg.get("content", "")
         channel_id = msg.get("channel_id")
         
+        state = get_node_state(token)
+        target_channel = state.get("pokemon_channel", "").strip()
+        
+        # Enforce listening strictly to the configured Pokemon Channel
+        if target_channel and channel_id != target_channel:
+            return
+        
         # Captcha Security Failsafe Scanner
         if author_id == POKETWO_ID and ("verify" in content.lower() or "captcha" in content.lower() or ("http" in content.lower() and "link" in content.lower())):
             try:
@@ -253,7 +260,6 @@ def on_message(resp, bot, token):
                 is_spawn_embed = "wild pokémon has appeared" in title or "wild pokémon has appeared" in desc or "guess the pokémon" in title or "guess the pokémon" in desc or (url and ("pokemon" in url.lower() or "poketwo" in url.lower()))
                 
                 if is_spawn_embed and url:
-                    state = get_node_state(token)
                     if not state.get("catch_enabled", True):
                         return
 
@@ -302,7 +308,6 @@ def on_message(resp, bot, token):
 
         # Immediate button click catching
         if author_id == POKETWO_ID and msg.get("components"):
-            state = get_node_state(token)
             if state.get("catch_enabled", True):
                 # Apply same cooldown rules for button clicks
                 curr_time = time.time()
