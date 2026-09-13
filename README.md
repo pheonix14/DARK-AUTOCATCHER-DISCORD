@@ -266,5 +266,6 @@ Running on Render.com is perfect if you want the autocatcher to run in the cloud
 
 <div align="center">
   <b>Developed by rayzien</b><br>
-  <i>"Embrace the Dark."</i>
+  <i>"Embrace the Dark."</i><br><br>
+  *(Please consider following my other account **[pheonix14](https://github.com/pheonix14)** too!)*
 </div>
