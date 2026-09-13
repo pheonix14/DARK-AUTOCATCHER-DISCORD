@@ -730,14 +730,14 @@ export default function App() {
           {activeTab === 'about' && (
             <div className="section active">
               {/* About slide VII */}
-              {/* SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92 */}
+              {/* SIGNATURE: DEPLOYED_BY_RAYZIEN_SECURE_HASH_8F3B92 */}
               <div className="glass-panel">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                   <img src="/logo.png" alt="Dragon Icon" style={{ width: '36px', height: '36px' }} />
                   <div style={{ fontWeight: '700', fontSize: '1.2rem', letterSpacing: '1px' }}>About PROJECT DARK</div>
                 </div>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.2rem' }}>
-                  PROJECT DARK is an advanced web-driven selfbot control panel designed for research and educational purposes. Developed and maintained exclusively by <strong style={{ color: 'var(--primary)' }}>pheonix14</strong>.
+                  PROJECT DARK is an advanced web-driven selfbot control panel designed for research and educational purposes. Developed and maintained exclusively by <strong style={{ color: 'var(--primary)' }}>rayzien</strong>.
                 </p>
                 <div style={{ borderLeft: '3px solid var(--accent)', paddingLeft: '1rem', marginBottom: '1.5rem' }}>
                   <div style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '0.4rem' }}>Research Disclaimer</div>
@@ -746,7 +746,7 @@ export default function App() {
                   </p>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
-                  © 2026 PROJECT DARK • developed by pheonix14 • All rights reserved
+                  © 2026 PROJECT DARK • developed by rayzien • All rights reserved
                 </div>
               </div>
             </div>

@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from utils import log_to_nexus, read_config, get_self_id
 from utility_controller import get_node_state, update_node_state
 
-# SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
+# SIGNATURE: DEPLOYED_BY_RAYZIEN_SECURE_HASH_8F3B92
 
 load_dotenv()
 POKETWO_ID = "716390085896962058"

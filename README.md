@@ -34,7 +34,7 @@
 - [⚙️ Config Template Setup](#️-config-template-setup)
 - [🔑 How to Get Your Discord Token](#-how-to-get-your-discord-token)
 - [💻 Deployment: Local Machine](#-deployment-local-machine)
-- [☁️ Deployment: Render.com Cloud (Free 24/7)](#️-deployment-rendercom-cloud-free-247)
+- [☁️ Deployment: Render.com Cloud](#️-deployment-rendercom-cloud)
 - [⚠️ Disclaimer & Warning](#️-disclaimer--warning)
 
 ---
@@ -227,9 +227,12 @@ Running locally is best if you want to use the web dashboard on your own PC and 
 
 ---
 
-## ☁️ Deployment: Render.com Cloud (Free 24/7)
+## ☁️ Deployment: Render.com Cloud
 
-Running on Render.com is perfect if you want the autocatcher to run 24/7 without keeping your computer on.
+Running on Render.com is perfect if you want the autocatcher to run in the cloud without keeping your computer on. 
+
+> [!NOTE]
+> **24/7 Hosting** is available natively for Premium users. Free tier users will need to use a pinging service like [UptimeRobot](https://uptimerobot.com/) to keep the bot awake, otherwise it will sleep after 15 minutes of inactivity.
 
 > [!WARNING]
 > You **MUST** put your tokens in `config.txt` inside your GitHub repository *before* you deploy to Render. Otherwise, the cloud instance will crash on startup. Make sure your forked repository is set to **PRIVATE** before putting your token in it!
@@ -254,7 +257,7 @@ Running on Render.com is perfect if you want the autocatcher to run 24/7 without
 4. **Deploy & Forget**
    - Click **Create Web Service**.
    - Render will begin building the Docker container. This takes a few minutes because it has to install the ONNX AI engine.
-   - Once it says **Live**, your bot is running 24/7! 
+   - Once it says **Live**, your bot is running! *(Remember to set up UptimeRobot if you are on the free tier to keep it 24/7).*
 
 > [!NOTE]
 > On the free tier of Render, incoming web ports are heavily firewalled, meaning you might not be able to access the web dashboard UI remotely. However, the background Discord bot and ONNX vision engine will run perfectly and catch Pokémon silently!
@@ -262,6 +265,6 @@ Running on Render.com is perfect if you want the autocatcher to run 24/7 without
 ---
 
 <div align="center">
-  <b>Developed by pheonix14</b><br>
+  <b>Developed by rayzien</b><br>
   <i>"Embrace the Dark."</i>
 </div>

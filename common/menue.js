@@ -1,6 +1,6 @@
 /**
  * PROJECT DARK v4.0.0
- * Developed by pheonix14
+ * Developed by rayzien
  * Pokémon 3-Color Theme Sidebar Menu Component
  */
 
@@ -28,7 +28,7 @@ function renderSidebarMenu() {
                     <li><a href="/pages/about.html" onclick="closeMenu()"><span class="sym">◈</span>About</a></li>
                 </ul>
                 <div class="menu-social">
-                    <a href="#">dev by pheonix14</a><br>
+                    <a href="#">dev by rayzien</a><br>
                     <a href="/pages/premium.html" style="color:var(--c2); font-size:12px; margin-top:5px; display:inline-block;">★ Buy Premium to Support!</a>
                 </div>
             </div>

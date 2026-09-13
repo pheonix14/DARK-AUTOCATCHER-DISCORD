@@ -8,7 +8,7 @@ import threading
 import webbrowser
 from utils import read_config
 
-# SIGNATURE: DEPLOYED_BY_PHEONIX14_SECURE_HASH_8F3B92
+# SIGNATURE: DEPLOYED_BY_RAYZIEN_SECURE_HASH_8F3B92
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_FILE = os.path.join(BASE_DIR, "pages", "index.html")
@@ -127,7 +127,7 @@ async def _async_broadcast(message):
 async def _ws_handler(websocket):
     global WS_CLIENTS
     WS_CLIENTS.add(websocket)
-    add_log("Dashboard client connected. developed by pheonix14 (v4.0.0)")
+    add_log("Dashboard client connected. developed by rayzien (v4.0.0)")
     add_log("⭐ Support the developer by checking out Premium! (/pages/premium.html)")
     try:
         config = read_config()

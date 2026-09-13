@@ -1,13 +1,13 @@
 /**
  * PROJECT DARK v4.0.0
- * Developed by pheonix14
+ * Developed by rayzien
  * 3-Color Pokémon Theme Common Shared Engine
  */
 
 window.PROJECT_INFO = {
     name: "PROJECT DARK",
     version: "v4.0.0",
-    developer: "pheonix14"
+    developer: "rayzien"
 };
 
 let socket = null;
@@ -1212,7 +1212,7 @@ window.addEventListener('load', () => {
         // Marquee
         const mq = document.getElementById('mq');
         if (mq) {
-            const MQ_ITEMS = ['PROJECT DARK', 'v4.0.0', 'PHEONIX14', 'AUTOCATCHER', '◈', 'SYSTEM SECURE', 'LIFETIME', '◈'];
+            const MQ_ITEMS = ['PROJECT DARK', 'v4.0.0', 'RAYZIEN', 'AUTOCATCHER', '◈', 'SYSTEM SECURE', 'LIFETIME', '◈'];
             const fill = [...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS, ...MQ_ITEMS];
             fill.forEach(txt => {
                 const d = document.createElement('div');

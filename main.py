@@ -45,7 +45,7 @@ def run_supervisor():
     ██████╔╝██║  ██║██║  ██║██║  ██╗
     ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝
     """)
-    print(f"[{PROJECT_NAME}] SYSTEM OVERRIDE INITIATED... developed by pheonix14")
+    print(f"[{PROJECT_NAME}] SYSTEM OVERRIDE INITIATED... developed by rayzien")
     print(f"[{PROJECT_NAME}] SUPERVISOR MODE: Watchdog is actively monitoring files for seamless updates.")
     
     if not WATCHDOG_INSTALLED:

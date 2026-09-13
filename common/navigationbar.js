@@ -1,6 +1,6 @@
 /**
  * PROJECT DARK v4.0.0
- * Developed by pheonix14
+ * Developed by rayzien
  * Pokémon 3-Color Theme Header Navigation Component
  */
 

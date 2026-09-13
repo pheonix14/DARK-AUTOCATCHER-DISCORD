@@ -129,7 +129,7 @@ def generate_glass_card(title, lines, output_filename="response.png"):
             draw.text((cx0 + 30, y_pos), line, fill=TEXT_SILVER, font=font_body)
 
     # 7. Footers (Monochrome Wukong styling)
-    draw.text((cx0 + 30, cy1 - 25), "developed by pheonix14", fill=TEXT_MUTED, font=font_small)
+    draw.text((cx0 + 30, cy1 - 25), "developed by rayzien", fill=TEXT_MUTED, font=font_small)
     # Clearly written: "GET PREMIUM FOR BETTER"
     draw.text((cx1 - 220, cy1 - 25), "★ GET PREMIUM FOR BETTER", fill=ACCENT_GOLD, font=font_small)
 
